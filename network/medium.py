@@ -54,7 +54,7 @@ class Medium:
         for i in self.conf['subtopics']:
             topicfilter = str(i) 
             self.socket_sub.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
-            print('Medium {} subscribes to port {} on topics {}'.format(self.conf['sub_id'], self.conf['sub_port'], topicfilter)) 
+            print('{} {} subscribes to port {} on topics {}'.format(self.conf['name'], self.conf['sub_id'], self.conf['sub_port'], topicfilter)) 
         socket_sub.setsockopt(zmq.RCVTIMEO, 0)
         while True:
             try:
@@ -63,9 +63,14 @@ class Medium:
                 topic=json.loads(slst[0])
                 messagedata =b''.join(slst[1:])
                 message = json.loads(messagedata)
-                self.sub_handler(topic, message['sdu']) 
+                print('received', message)
+                time.sleep(self.conf['dly'])
+                if 'sdu' in message:
+                    self.sub_handler(topic, message['sdu']) 
+                else:
+                    print('{} {} received no sdu for topic {}:'.format(self.conf['name'],self.conf['sub_id'], topic))
             except zmq.ZMQError:
-                print('Medium receiver failed in sub_loop')
+                print('{} receiver failed in sub_loop'.format(self.conf['name']))
 
     def pub_loop(self):
         while True:
@@ -75,59 +80,33 @@ class Medium:
                     bstring = json.dumps(payload)
                     self.socket_pub.send_string("%d %s"% (topic, bstring))  #pub transmits
             except zmq.ZMQError:
-                print('Medium receiver failed in pub_loop')
-
+                print('{} receiver failed in pub_loop'.format(self.conf['name']))
 
     #publsiher payload: back end facing server #generate publications 
     def pub_handler(self,  topic):
-        tx = {'pid': self.conf['pub_id'], 'mtm': time.perf_counter(), 'topic':topic}#, 'issuer':self.conf['pub_id']} #pdu = sdu+overhead
-        if len(self.queue):
+        tx = {'pid': self.conf['pub_id'], 'topic':topic}
+        print(self.queue)
+        if len(self.queue)>0:
             tx['sdu'] = self.queue.popleft()
-           
-
-        if self.tmplat:
-            time.sleep(self.tmplat) # add needd temporary latency
-        print('Medium sends:', tx)
+        print('{} sent {}'.format(self.conf['name'], tx))
         return tx
 
     #subscriber sink: facing client, consuming received subspription according to topiccs
     def sub_handler(self,  topic,  sdu):
-        print('Medium {} receives sdu for topic {}:'.format(self.conf['sub_id'], topic))
-        if sdu and topic == 3: #for controller: remove packet, add latency
-            if 'laty' in sdu:     #set current latency, if present, before drop the packet if needed
-                self.tmplat = sdu['laty']
-            if 'lost' not in sdu: #lost packet, if
-                self.queue.append(sdu)
-        else:
+        self.state(sdu)
+        print('{} {} received an sdu for topic {}:'.format(self.conf['name'],self.conf['sub_id'], topic))
+
+    def state(self, sdu): #local state generator
+        time.sleep(random.expovariate(self.conf['latency'])) #exponentail delay
+        if random.random() > self.conf['loss']: #good packet passes wehn number is greater than loss rate
+            sdu['mtm'] = time.time_ns()
             self.queue.append(sdu)
+        print(self.queue)
 
-'''
-#packet format definition:
-    pkt ={'pid': publisher_id, 'topic':, 'issuer':, 'stm':, 'sdu', sdu}
-    if pid(publisher_id) ==3:
-        expect: sdu = {'data': binary_blob, 'laty':, 'lost',:}
-    else: #from other topics
-        exepcet sdu ={'data': binary_blob}
 
-    received from topic==1
-    binary_blob untouched, to be opened by receiver under topic==2
-'''
 
 if __name__=="__main__":
-    CONF = {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'subtopics': [1,3], 'pubtopics':[2], 'pub_id':2, 'sub_id': 2, 'dly':0.}
-    inst = Medium(CONF)
+    S2R_CONF = {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'subtopics': [1,102], 'pubtopics':[2,101], 'pub_id':2, 'sub_id': 2,'dly': 1., 'name':'Medium', 'latency':1.1, 'los': 0.2}
+    inst = Medium(S2R_CONF)
     inst.sub_and_pub() 
-    """
-    sinst = pub.Pub(S_CONF)
-    rinst = sub.Sub(R_CONF)
-    cinst = sub.Sub(C_CONF)
-    threads = [Thread(target=sinst.publisher), Thread(target=rinst.subscriber), Thread(target=cinst.subscriber)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    sinst.close()
-    rinst.close()
-    cinst.close()
-    """
 

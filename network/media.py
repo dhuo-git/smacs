@@ -1,0 +1,44 @@
+
+import pub, sub
+from collections import deque
+from threading import Thread
+import time, random
+class Medium:
+    def __init__(self, sub_conf, pub_conf, med_conf):
+        self.sub_conf = sub_conf
+        self.pub_conf = pub_conf
+        self.med_conf = med_conf
+        print("Medium Conf", self.sub_conf, self.pub_conf, self.med_conf)
+        self.sub = sub.Sub(self.sub_conf)
+        self.pub = pub.Pub(self.pub_conf)
+        self.queue = deque(maxlen=self.med_conf['maxlen'])
+    def sub_and_pub(self):
+        threads = [Thread(target=self.sub.subscriber, args=(self.queue,)), Thread(target=self.pub.publisher, args=(self.queue,)), Thread(target=self.medium_loop)]
+        for t in threads:
+            t.start()
+        for t in threads: t.join()
+
+        self.sub.close()
+        self.pub.close()
+        print('sub_and_sub closed and context terminated')
+    def medium_loop(self):
+        while True:
+            if len(self.queue)>0:
+                self.state_handler()
+            time.sleep(self.med_conf['dly'])
+
+    def state_handler(self):
+        time.sleep(random.expovariate(self.med_conf['rlat'])) #random latency is  exponentailly distributed 
+        if random.random() < self.med_conf['loss']: # error occurs 
+            item = self.queue.popleft()
+            print('lost packet', item)
+        
+        print(self.queue)
+        #print('medium buffer state', len(self.queue))
+
+if __name__ == "__main__":
+    Sub_CONF= {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':2., 'name': 'Mrx'}#use external buffer
+    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'sdu':{'stm':0, 'seq':0}}
+    Med_CONF= {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'pub_id':2, 'sub_id': 2,'dly': 1., 'name':'M', 'rlat':1.1, 'loss': 0.5, 'maxlen':10}
+    inst = Medium(Sub_CONF, Pub_CONF, Med_CONF)
+    inst.sub_and_pub()
