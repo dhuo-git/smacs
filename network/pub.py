@@ -19,6 +19,7 @@ class Pub:
         self.seq =0
         self.socket = self.context.socket(zmq.PUB)
         self.socket.connect ("tcp://{0}:{1}".format(self.conf['ipv4'], self.conf['pub_port']))
+        self.id = self.conf['pub_id']
 
         #self.socket.setsockopt(zmq.SNDHWM, 2)
 
@@ -37,13 +38,14 @@ class Pub:
         if queue:   #if not empty
             self.conf['sdu'] = queue.popleft()  #used as inermediate node
 
-        self.conf['sdu']['stm']=time.time_ns() #otherwise used as initial node
         self.conf['sdu']['chan'] = topic                  #for differentiate signal and traffic for upper layer
+        self.conf['sdu'][f'stm{self.id}']=time.time_ns() #otherwise used as initial node
 
-        tx = {'pid': self.conf['pub_id'], 'chan': topic, 'sdu': self.conf['sdu']}
+        tx = {'pid': self.id, 'chan': topic, 'sdu': self.conf['sdu']}
         self.conf['sdu']['seq']+=1
+
         if self.conf['print']:
-            print("{} pid={} sent {}".format(self.conf['name'], self.conf['pub_id'],  tx))
+            print("{} pid={} sent {}".format(self.conf['name'], self.id,  tx))
         return tx
 
     def close(self):
@@ -51,7 +53,7 @@ class Pub:
         self.context.term()
         print('pub socket closed and context terminated')
 #-------------------------------------------------------------------------
-CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':0,'dly':2., 'name': 'Server', 'maxlen': 4, 'sdu':{'stm':0, 'seq':0}, 'print': False} #sdu holder incase no external queue
+CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':1,'dly':2., 'name': 'Server', 'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #sdu holder incase no external queue
 if __name__ == "__main__":
     print(sys.argv)
     conf=CONF
