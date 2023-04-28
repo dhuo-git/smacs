@@ -20,25 +20,35 @@ class Medium:
 
         self.sub.close()
         self.pub.close()
-        print('sub_and_sub closed and context terminated')
+        if self.med_conf['print']: print('sub_and_sub closed and context terminated')
     def medium_loop(self):
         while True:
             if len(self.queue)>0:
                 self.state_handler()
             time.sleep(self.med_conf['dly'])
-
-    def state_handler(self):
-        time.sleep(random.expovariate(self.med_conf['rlat'])) #random latency is  exponentailly distributed 
-        if random.random() < self.med_conf['loss']: # error occurs 
-            item = self.queue.popleft()
-            print('lost packet', item)
+    #channel condition is added to all channels uniformly without differentiation of direction, desitation and origin
+    #packets from all channels are queued in a single FIFO: self.queue, assuming symmetrical channel, reflecting network congestion if
+    def state_handler(self): 
+        if self.queue and 'sdu' in self.queue[0] and (self.queue[0]['sdu']['chan'] < 4 or self.queue[0]['sdu']['chan']%2>0):
+            if self.med_conf['print']: 
+                print('signalling packet passed')
+            return
         
-        print(self.queue)
-        #print('medium buffer state', len(self.queue))
+        if random.random() < self.med_conf['loss']: # error occurs 
+            if self.queue:
+                item = self.queue.popleft()
+            else:
+                item = None
+            if self.med_conf['print']: 
+                print('lost packet', item)
+
+        time.sleep(random.expovariate(self.med_conf['lambda'])) #random latency is  exponentailly distributed 
+        
+        if self.med_conf['print']: print('medium buffer state', len(self.queue))
 
 if __name__ == "__main__":
-    Sub_CONF= {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':2., 'name': 'Mrx'}#use external buffer
-    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'sdu':{'stm':0, 'seq':0}}
-    Med_CONF= {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'pub_id':2, 'sub_id': 2,'dly': 1., 'name':'M', 'rlat':1.1, 'loss': 0.5, 'maxlen':10}
+    Sub_CONF= {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[4,106], 'sub_id':2, 'dly':2., 'name': 'Mrx', 'print': True}#use external buffer
+    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[104,6], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'maxlen': 10, 'sdu':{'stm':0, 'seq':0}, 'print': True}
+    Med_CONF= {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'pub_id':2, 'sub_id': 2,'dly': 1., 'name':'M', 'lambda':10., 'loss': 0.2, 'maxlen':10, 'print': True}
     inst = Medium(Sub_CONF, Pub_CONF, Med_CONF)
     inst.sub_and_pub()
