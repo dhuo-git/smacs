@@ -49,16 +49,13 @@ class Sub:
     def sub_handler(self, message, fifo):
         if 'sdu' in message:
             message['sdu'][f'rtm{self.id}'] = time.time_ns() #arrival time
-            if fifo.maxlen:
-                if len(fifo) < fifo.maxlen:
-                    fifo.append(message['sdu'])
-                    result = '{} sid={} received and buffered {} '.format(self.conf['name'], self.id, message)
-                else:
-                    result = '{} sid={} received {}, buffer full'.format(self.conf['name'], self.id, message)
+            if len(fifo) < fifo.maxlen:
+                fifo.append(message['sdu'])
+                result = '{} sid={} received and buffered {} '.format(self.conf['name'], self.id, message)
             else:
-                result = '{} sid={} received {}, no buffer'.format(self.conf['name'], self.id, message)
+                result = '{} sid={} received {}, buffer full'.format(self.conf['name'], self.id, message)
         else:
-            result = '{} sid={} received {} '.format(self.conf['name'], self.id, message)
+            result = '{} sid={} received {}, no sdu '.format(self.conf['name'], self.id, message)
 
         if self.conf['print']: print(result)
 
@@ -77,7 +74,6 @@ class Sub:
                 time.sleep(self.conf['dly'])
 
 #-------------------------------------------------------------------------
-#CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':node_id, 'dly': latency for dev, 'name': node_name}
 CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'maxlen':10, 'print': False}
 #CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'maxlen':10, 'print': True}
 if __name__ == "__main__":

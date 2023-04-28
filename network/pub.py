@@ -15,10 +15,15 @@ class Pub:
         self.conf = conf.copy()
         print('Pub-Conf', self.conf)
         self.context = zmq.Context()
-        self.queue = deque(maxlen=conf['maxlen'])   #input data FIFO buffer 
-        self.seq =0
+        if self.conf['maxlen']:
+            self.queue = deque(maxlen=conf['maxlen'])   #input data FIFO buffer 
+        else:
+            self.queue = deque([])
+
         self.socket = self.context.socket(zmq.PUB)
         self.socket.connect ("tcp://{0}:{1}".format(self.conf['ipv4'], self.conf['pub_port']))
+
+        self.sdu = self.conf['sdu']
         self.id = self.conf['pub_id']
 
         #self.socket.setsockopt(zmq.SNDHWM, 2)
@@ -36,13 +41,13 @@ class Pub:
 
     def pub_handler(self,  topic, queue): #self.conf['sdu']['stm']=time.perf_counter()
         if queue:   #if not empty
-            self.conf['sdu'] = queue.popleft()  #used as inermediate node
+            self.sdu = queue.popleft()  #used as inermediate node
 
-        self.conf['sdu']['chan'] = topic                  #for differentiate signal and traffic for upper layer
-        self.conf['sdu'][f'stm{self.id}']=time.time_ns() #otherwise used as initial node
+        self.sdu['chan'] = topic                  #for differentiate signal and traffic for upper layer
+        self.sdu[f"stm{self.id}"]=time.time_ns() #otherwise used as initial node
 
-        tx = {'pid': self.id, 'chan': topic, 'sdu': self.conf['sdu']}
-        self.conf['sdu']['seq']+=1
+        tx = {'pid': self.id, 'chan': topic, 'sdu': self.sdu}
+        self.sdu['seq']+=1
 
         if self.conf['print']:
             print("{} pid={} sent {}".format(self.conf['name'], self.id,  tx))

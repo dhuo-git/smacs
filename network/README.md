@@ -5,10 +5,11 @@ python (or python3)
 	pub.py 
 	sub.py (-ex using exernal buffer) 
 
-	producer.py (using pub.py)
-	consumer.py (using sub.py)
-	media.py (on pub.py, sub.py)
+	producer.py (use pub.py)
+	consumer.py (use sub.py)
+	media.py (pub.py -> sub.py)
 test:
+
 	1) 
 	python3 hub.py -fwd
 

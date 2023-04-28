@@ -1,6 +1,12 @@
-
+'''
+Media: consists of 
+    1) a Sub
+    2) a Pub
+    3) a med_loop, that takes packet from sub-buffer to pub-buffer and 
+    changes the state of the packets that are from channels less than 4 and not even
+4/18/2023/nj
+'''
 import pub, sub
-from collections import deque
 from threading import Thread
 import time, random
 class Medium:
@@ -11,9 +17,10 @@ class Medium:
         print("Medium Conf", self.sub_conf, self.pub_conf, self.med_conf)
         self.sub = sub.Sub(self.sub_conf)
         self.pub = pub.Pub(self.pub_conf)
-        self.queue = deque(maxlen=self.med_conf['maxlen'])
+        self.queue = self.sub.queue #use sub default receive buffer 
     def sub_and_pub(self):
-        threads = [Thread(target=self.sub.subscriber, args=(self.queue,)), Thread(target=self.pub.publisher, args=(self.queue,)), Thread(target=self.medium_loop)]
+        #threads = [Thread(target=self.sub.subscriber, args=(self.queue,)), Thread(target=self.pub.publisher, args=(self.queue,)), Thread(target=self.medium_loop)]
+        threads = [Thread(target=self.sub.subscriber ), Thread(target=self.pub.publisher, args=(self.queue,)), Thread(target=self.medium_loop)]
         for t in threads:
             t.start()
         for t in threads: t.join()
@@ -47,8 +54,8 @@ class Medium:
         if self.med_conf['print']: print('medium buffer state', len(self.queue))
 
 if __name__ == "__main__":
-    Sub_CONF= {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[4,106], 'sub_id':2, 'dly':2., 'name': 'Mrx', 'print': True}#use external buffer
-    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[104,6], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'maxlen': 10, 'sdu':{'seq':0}, 'print': True}
+    Sub_CONF= {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[4,106], 'sub_id':2, 'dly':2., 'name': 'Mrx', 'maxlen': 10,  'print': True}#use external buffer
+    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[104,6], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'maxlen': 10,  'sdu':{'seq':0}, 'print': True}
     Med_CONF= {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'pub_id':2, 'sub_id': 2,'dly': 1., 'name':'M', 'lambda':10., 'loss': 0.2, 'maxlen':10, 'print': True}
     inst = Medium(Sub_CONF, Pub_CONF, Med_CONF)
     inst.sub_and_pub()
