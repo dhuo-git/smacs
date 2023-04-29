@@ -4,7 +4,7 @@ import sub, pub
 #receiver subscribe to sender via medium 
 SubS_CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[6], 'sub_id':3, 'dly':1., 'name': 'Consumer','maxlen': 4,  'print': False}
 #receiver publisher states for controler
-PubC_CONF = {'ipv4':"127.0.0.1" , 'pub_port': "5568", 'pubtopics':[106], 'pub_id':3, 'dly':1., 'name': 'Consumer', 'maxlen': 10, 'sdu': {'stm':0, 'seq':0}, 'print': False}
+PubC_CONF = {'ipv4':"127.0.0.1" , 'pub_port': "5568", 'pubtopics':[106], 'pub_id':3, 'dly':1., 'name': 'Consumer', 'is_origin': True, 'maxlen': 10, 'sdu': {'stm':0, 'seq':0}, 'print': False}
 
 
 #three independent channels: receive traffic(sub), receive control(sub), send states(pub)

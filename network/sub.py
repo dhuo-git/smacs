@@ -65,7 +65,7 @@ class Sub:
         if queue == None:
             queue = self.queue
 
-        print('---- start external output  loop with fifo:', list(queue))
+        print('---- external output via fifo:', list(queue))
         while True:
             if queue: 
                 print(f'node {self.id} fifo top:', queue.popleft())
@@ -84,8 +84,13 @@ if __name__ == "__main__":
     for t in process: t.start()
     '''
     print(sys.argv)
-    inst=Sub(CONF)
-    if len(sys.argv) >1 and sys.argv[1]=='-ex': #access result from out side the process
+    if len(sys.argv) > 1:
+        print("usage: python3 sub.py")
+        exit(0)
+    inst=Sub(CONF) #if len(sys.argv) >1 and sys.argv[1]=='-ex': #access result from out side the process
+    if CONF['print']:   #using sdio
+        inst.subscriber()
+    else:               # load results to an external buffer Q and print
         Q = deque(maxlen=4)
         from threading import Thread
         thread = [Thread(target=inst.subscriber, args=(Q,)), Thread(target=inst.output, args=(Q,))]
@@ -94,6 +99,4 @@ if __name__ == "__main__":
             t.start()
         for t in thread:
             t.join()
-    else:       #keep results inside the process, can be viewed by setting 'print'=True 
-        inst.subscriber()
     inst.close()

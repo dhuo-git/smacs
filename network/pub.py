@@ -31,7 +31,6 @@ class Pub:
     def publisher(self, fifo =None): 
         if fifo == None:
             fifo = self.queue
-        #print('{} {} publishes from port {} on topics {}'.format(self.conf['name'], self.conf['pub_id'], self.conf['pub_port'], self.conf['pubtopics'])) 
         while True: 
             for topic in self.conf['pubtopics']:
                 message = self.pub_handler(topic, fifo) #message={'sdu': payload}
@@ -40,11 +39,12 @@ class Pub:
             time.sleep(self.conf['dly'])
 
     def pub_handler(self,  topic, queue): #self.conf['sdu']['stm']=time.perf_counter()
-        if queue:   #if not empty
-            self.sdu = queue.popleft()  #used as inermediate node
+        if queue == None:
+            self.sdu = queue.popleft()  #use external buffer 
 
-        self.sdu['chan'] = topic                  #for differentiate signal and traffic for upper layer
-        self.sdu[f"stm{self.id}"]=time.time_ns() #otherwise used as initial node
+        self.sdu['chan'] = topic  #signal or traffic for upper layer
+        if self.conf['is_origin']:
+            self.sdu[f"stm{self.id}"]=time.time_ns() 
 
         tx = {'pid': self.id, 'chan': topic, 'sdu': self.sdu}
         self.sdu['seq']+=1
@@ -58,7 +58,7 @@ class Pub:
         self.context.term()
         print('pub socket closed and context terminated')
 #-------------------------------------------------------------------------
-CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':1,'dly':2., 'name': 'Server', 'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #sdu holder incase no external queue
+CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':1,'dly':2., 'name': 'Server','is_origin':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #sdu holder incase no external queue
 if __name__ == "__main__":
     print(sys.argv)
     conf=CONF

@@ -2,7 +2,7 @@
 from threading import Thread
 import pub, sub
 #sender publishes for topic 1 (traffic channel)
-PubS_CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[4],   'pub_id':1, 'dly':1., 'name': 'Producer', 'maxlen': 10, 'sdu':{'seq':0}, 'print': False}
+PubS_CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[4],   'pub_id':1, 'dly':1., 'name': 'Producer', 'is_origin': True, 'maxlen': 10, 'sdu':{'seq':0}, 'print': False}
 #sender subscribes to topic 3 (controll channel)
 SubC_CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[104], 'sub_id':1, 'dly':1., 'name': 'Producer', 'maxlen':4, 'print': False}
 if __name__== "__main__":

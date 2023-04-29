@@ -55,7 +55,7 @@ class Medium:
 
 if __name__ == "__main__":
     Sub_CONF= {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[4,106], 'sub_id':2, 'dly':2., 'name': 'Mrx', 'maxlen': 10,  'print': True}#use external buffer
-    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[104,6], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'maxlen': 10,  'sdu':{'seq':0}, 'print': True}
+    Pub_CONF= {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[104,6], 'pub_id':2, 'dly':2., 'name': 'Mtx', 'is_origin': False, 'maxlen': 10,  'sdu':{'seq':0}, 'print': True}
     Med_CONF= {'ipv4':'127.0.0.1' , 'sub_port': 5570, 'pub_port': "5568", 'pub_id':2, 'sub_id': 2,'dly': 1., 'name':'M', 'lambda':10., 'loss': 0.2, 'maxlen':10, 'print': True}
     inst = Medium(Sub_CONF, Pub_CONF, Med_CONF)
     inst.sub_and_pub()
