@@ -12,7 +12,6 @@ from collections import deque
 #PFS_CONF = {'fwd_port':"5566" , 'pub_port': "5568", '"sub_port': "5570", 'pubtopics':[0,1,2,3,4], 'subtopics':[0,4]}
 
 class Pub:
-    '''Topic is a string as ASCII '''
     def __init__(self, conf):
         self.conf = conf.copy()
         print('Pub-Conf', self.conf)
@@ -31,8 +30,10 @@ class Pub:
             self.queue = {name: deque([]) for name in self.conf['pubtopics']}   #input data FIFO buffer, no limit
         self.seq = {name:name for name in self.conf['pubtopics']}
 
-    #def publisher(self, lstfifo =None, mutex=None): 
-    #def publisher(self, lstfifo =None, mutex=None): 
+    #in case data is to be imported from outside
+    def get_lstqueue(self):
+        return self.queue
+
     def publisher(self, lstfifo =None):
         if lstfifo == None or not isinstance(lstfifo, dict):
             self.prepare()
@@ -47,38 +48,47 @@ class Pub:
         for topic in self.conf['pubtopics']:
             print('{} {} publishes to port {} on topics {}'.format(self.conf['name'], self.id, self.conf['pub_port'], topic))
 
+        if 'rounds' in self.conf:
+            for _ in range(self.conf['rounds']):
+                message = self.pub_handler(topic)
+                bstring = json.dumps(message)
+                self.socket.send_string("%d %s"% (topic, bstring)) 
+            self.close()
+            print('closed after sent:', self.conf['rounds'], self.socket.closed)
+            return
+
         while True: 
             for topic in self.conf['pubtopics']:
-                '''
-                if mutex:
-                    mutex.acquire()
-                    message = self.pub_handler(topic, lstfifo) 
-                    mutex.release()
-                else:
-                '''
-                message = self.pub_handler(topic)#, lstfifo) 
-
+                message = self.pub_handler(topic)
                 bstring = json.dumps(message)
                 self.socket.send_string("%d %s"% (topic, bstring)) 
             time.sleep(self.conf['dly'])
 
     def pub_handler(self,  topic):#,  queue): #self.conf['sdu']['stm']=time.perf_counter()
-        if self.conf['tstmp']:#queue == None: #internal packet generation
-            sdu = self.generator(topic).popleft()
-        elif self.queue[topic]:
-            sdu = self.queue[topic].popleft()  #extract sdu: queue=fifo (external), queue=self.queue (internal: empty to start)
-        else: sdu = dict()  #no data
+        #if self.conf['tstmp']:#queue == None: #internal packet generation sdu = self.generator(topic).popleft()
+        #elif self.queue[topic]: sdu = self.queue[topic].popleft()  #extract sdu: queue=fifo (external), queue=self.queue (internal: empty to start)
+        # else: sdu = dict()  #no data
 
-        #if self.conf['is_origin']: sdu[f"stm{self.id}"]=time.time_ns() 
+        #tx = {'pid': self.id, 'chan': topic, 'sdu': sdu, 'cdu':{f'stm{self.id}': time.time_ns()}} #sdu can be from external, or from self.conf
+        #elif self.queue[topic]:
+        tx = {'pid': self.id, 'chan': topic, 'cdu':self.cdu(topic)}
+        if  self.queue[topic]:
+            tx['sdu']= self.queue[topic].popleft() 
+        else:
+            tx['sdu']= {}
+            self.generate(topic)
 
-        tx = {'pid': self.id, 'chan': topic, 'sdu': sdu} #sdu can be from external, or from self.conf
 
         if self.conf['print']: print("{} pid={} sent {}".format(self.conf['name'], self.id,  tx))
         return tx
 
-    def generator(self, key):
-        self.queue[key].append({'chan':key, 'seq': self.seq[key], f'stm{self.id}': time.time_ns()})
-        self.seq[key] += 1
+    def cdu(self, pub_topic):
+        cdu ={'pid': self.id, 'chan': pub_topic, 'seq': self.seq[pub_topic], f'stm{self.id}': time.time_ns()} 
+        self.seq[pub_topic] += 1
+        return cdu
+
+    def generate(self, key):
+        self.queue[key].append({f'date{self.id}': time.ctime()})
         return self.queue[key]
 
     def close(self):
@@ -90,6 +100,8 @@ CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_i
 
 if __name__ == "__main__":
     print(sys.argv)
+    if len(sys.argv) >1:
+        CONF['rounds'] = int(sys.argv[1])
     conf=CONF
     inst=Pub(conf)
     inst.publisher()
