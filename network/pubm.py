@@ -1,5 +1,5 @@
 '''
-pub.py is a stand-alone publisher, to be used by end points, such as producer.py or consumer.py
+pubm.py is a stand-alone publisher, to be used by end points, such as producer.py or consumer.py
 configured by CONF shown below in test section
 code runs only when python3 hub.py -fwd is active in background
 each channel has individual buffer: self.queue[n_topics], allowing more user share the same publisher
@@ -71,7 +71,7 @@ class Pub:
 
         #tx = {'pid': self.id, 'chan': topic, 'sdu': sdu, 'cdu':{f'stm{self.id}': time.time_ns()}} #sdu can be from external, or from self.conf
         #elif self.queue[topic]:
-        tx = {'pid': self.id, 'chan': topic, 'cdu':self.cdu(topic)}
+        tx = {'id': self.id, 'chan': topic, 'cdu':self.cdu(topic), 'sdu':dict()}
         if  self.queue[topic]:
             tx['sdu']= self.queue[topic].popleft() 
         else:
@@ -79,11 +79,11 @@ class Pub:
             self.generate(topic)
 
 
-        if self.conf['print']: print("{} pid={} sent {}".format(self.conf['name'], self.id,  tx))
+        if self.conf['print']: print("{} id={} sent {}".format(self.conf['name'], self.id,  tx))
         return tx
 
     def cdu(self, pub_topic):
-        cdu ={'pid': self.id, 'chan': pub_topic, 'seq': self.seq[pub_topic], f'stm{self.id}': time.time_ns()} 
+        cdu ={'id': self.id, 'chan': pub_topic, 'seq': self.seq[pub_topic], f'stm{self.id}': time.time_ns()} 
         self.seq[pub_topic] += 1
         return cdu
 
@@ -96,7 +96,8 @@ class Pub:
         self.context.term()
         print('pub socket closed and context terminated')
 #------------------------------ TEST -------------------------------------------
-CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':1,'dly':2., 'name': 'Server','tstmp':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #template configuration 
+CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0], 'pub_id':1,'dly':2., 'name': 'Server','tstmp':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #template configuration 
+#CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':1,'dly':2., 'name': 'Server','tstmp':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #template configuration 
 
 if __name__ == "__main__":
     print(sys.argv)

@@ -70,15 +70,15 @@ class Sub:
             cdu = {}
         message.pop('cdu')
 
-            #print(len(queue), topic)
+        #print(len(queue), topic)
         if message['sdu']:
             sdu = message['sdu']
+            message.pop('sdu')
         else:
             sdu = {}
-        message.pop('sdu')
         print('header:', message)
         if self.conf['print']: 
-            print('{} sid={} received cdu {} and sdu {}'.format(self.conf['name'], self.id, cdu, sdu))
+            print('{} id={} received cdu {} and sdu {}'.format(self.conf['name'], self.id, cdu, sdu))
 
         #time.sleep(self.conf['dly'])
     '''
@@ -103,7 +103,7 @@ class Sub:
     '''
 
 #-------------------------------------------------------------------------
-CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[1,2,3], 'sub_id':2, 'dly':1., 'name': 'Client', 'print': True}
+CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'print': True}
 #CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[1,2,3], 'sub_id':2, 'dly':1., 'name': 'Client', 'tstmp': True, 'maxlen':10, 'print': False}
 #CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'tstmp': True, 'maxlen':10, 'print': True}
 if __name__ == "__main__":

@@ -73,8 +73,8 @@ class PubFwdSub:
 
     #publsiher payload: back end facing server #generate publications 
     def pub_handler(self, publisher_id, topic):
-        tx = {'pid': publisher_id,'top': topic, 'tm': time.perf_counter()}
-        print('Server sends:', tx)
+        tx = {'id': publisher_id,'top': topic, 'tm': time.perf_counter()}
+        print('Server {} sends for topic {}:'.format(publisher_id, topic), tx)
         return tx
 
     def forwarder(self):

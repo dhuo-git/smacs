@@ -126,6 +126,7 @@ class Medium:
     #receive on U from consumer 
     def u_from_c(self, pub_topic, message):
         self.state[pub_topic]['cdu'] = message['cdu']
+        self.state[pub_topic]['sdu'] = message['sdu']
 #------------------TEST----------------
 '''
 as a forwarder, it handles U-traffic only, given by CONF['rt']={sub:pub} pairs
