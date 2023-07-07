@@ -18,10 +18,16 @@ test:
 	python3 sub.py
 
 	3)
-	python3 media.py
+	python3 medium.py
 	python3 producerm.py
 	python3 consumerm.py
 
+	4)
+	python3 hub.py -fwd
+	python3 consumer.py
+	python3 producer.py
+	python3 controller.py
+	
 github.com/dhuo-git/traffic-control
 
 

@@ -22,7 +22,7 @@ from threading import Thread #, Lock
 #==========================================================================
 class Consumer:
     def __init__(self, conf):
-        self.conf = conf.copy()
+        self.conf = copy.deepcopy(conf)
         print('Consumer:', self.conf)
         self.id = conf['key'][1]
         self.open()
@@ -58,10 +58,10 @@ class Consumer:
         self.context.term()
         print('sockets closed and context terminated')
 
-    #producer state template
+    #producer state template: 'update' only needed for u-plane in combination with 'urst'
     def cst_template(self):
-        ctr= {'chan': self.conf['ctr_pub'],'seq':0,'mseq': 0, 'pt':[], 'new': True, 'crst': False}
-        c2p= {'chan': self.conf['u_pub'], 'seq':0, 'mseq':0,  'ct':[], 'new': True}
+        ctr= {'chan': self.conf['ctr_pub'],'seq':0,'mseq': 0, 'pt':[], 'new': True, 'crst': False, 'loop': True}
+        c2p= {'chan': self.conf['u_pub'], 'seq':0, 'mseq':0,  'ct':[], 'new': True, 'urst': False, 'update': False}
         return {'id': self.id, 'key': self.conf['key'], 'ctr': ctr, 'c2p':c2p}
 
     #cdu send to N7 (mode 0)
@@ -99,35 +99,36 @@ class Consumer:
 
     #device TX
     def transmit(self, rcdu, note, sdu = dict()):
-        message = {'cdu': rcdu, 'sdu': sdu}
+        message = {'cdu': copy.deepcopy(rcdu), 'sdu': copy.deepcopy(sdu)}
         bstring = json.dumps(message)
         self.pub_socket.send_string("%d %s"% (rcdu['chan'], bstring)) 
         print(note, rcdu)
-    #device RX
-    def receive(self, note):
+    #device RX: c=T returns cdu only, c=F returns full message
+    def receive(self, note, c=True):
         bstring = self.sub_socket.recv()
         slst= bstring.split()
         sub_topic=json.loads(slst[0])
         messagedata =b''.join(slst[1:])
         message = json.loads(messagedata) 
-        cdu = message['cdu']
-        print(note,sub_topic,  message)
-        return sub_topic, cdu
+        print(note, f' on N{sub_topic}:',  message)
+        if c:
+            return sub_topic, message['cdu']
+        else:
+            return sub_topic, message
     #operation modes 4,0,1,2,3
     def Test(self):
         print('mode Test')
-        while True: 
+        while True: #self.cst['ctr']['seq'] < self.conf['cnt']:
             sub_topic, cdu = self.receive('rx:')
-
-            self.cst['ctr']['seq'] = message['cdu']['seq']
-
-            self.transmit(rcdu, 'tx:')
+            self.cst['ctr']['seq'] = cdu['seq']
+            rcdu = self.ctr_cdu0(self.cst['ctr']['seq'])
+            self.transmit(rcdu, 'test tx:')
             time.sleep(self.conf['dly'])
 
     #receive from permissible interfaces [N0, N4]
     def Mode0(self):
         print('mode 0')
-        while True: #receive from permissible interfaces [N0, N4]
+        while self.cst['ctr']['loop']: #True: #receive from permissible interfaces [N0, N4]
             sub_topic, cdu = self.receive('rx:')
             #slot 1
             if sub_topic == self.conf['ctr_sub']:                       #from N0
@@ -135,16 +136,26 @@ class Consumer:
                     self.cst['ctr']['seq'] = cdu['seq']
                     if cdu['conf']:
                         conf = copy.deepcopy(cdu['conf'])
-                        print('conf', conf)
-                        self.conf = copy.deepcopy(conf['c'])
+                        print('received conf:', conf)
+                        self.conf = copy.deepcopy(conf['pc_conf']['c'])
                     else:
-                        print('no valid conf received', cdu['conf'])
+                        print('no valid conf received',cdu['seq'],  cdu['conf'])
                     #acknowledge any way
                     rcdu = self.ctr_cdu0(self.cst['ctr']['seq'])
                     self.transmit(rcdu, 'tx:')
                     if cdu['crst']:     #controll state reset
                         self.cst['ctr']['seq'] = 0
                         print('consumer reset and wait ...') #print('new state', self.cst)
+                        f=open('c.conf', 'w')
+                        f.write(json.dumps(self.conf))
+                        f.close()
+                        '''
+                        #experiment of starting a mode 2
+                        if self.conf['mode']==2:
+                            print('mode switch to 3') #time.sleep(2) #os.system("python3 consumer.py 3")
+                            self.run()
+                            self.state['loop'] = False
+                        '''
             time.sleep(self.conf['dly'])
     #receive on [N4], send on [N6]
     def Mode2(self):
@@ -178,12 +189,10 @@ class Consumer:
     #2 slots, each with a SDU on N4, where slot 1 together with pt, slot 2 with local ack
     '''
     def Mode1Rx(self):
-        print('mode 1 consumer:', self.conf['mode'])
+        print('mode 1 for consumer Rx:', self.conf['mode'])
         while True: #slot 1
-
             sub_topic, cdu = self.receive('rx:')
             if sub_topic == self.conf['ctr_sub']:                       #from N0 #prepare N6
-                #if cdu['mseq'] > self.cst['c2p']['mseq']:                   #prepare for N6 if 1:
                 if cdu['ct']:
                     cdu['ct'].append(time.time_ns())
                     if len(cdu['ct']) == 2:
@@ -199,7 +208,6 @@ class Consumer:
                     print("rx ctr N0 :",cdu)
 
             if sub_topic == self.conf['u_sub']:
-                #if cdu['mseq'] > self.cst['ctr']['mseq']:# if 1:
                 if cdu['pt']:
                     cdu['pt'].append(time.time_ns())
                     if len(cdu['pt']) == 4:
@@ -212,7 +220,7 @@ class Consumer:
                 print("rx c2p N4:",cdu)
 
     def Mode1Tx(self): #slot 2, 
-        print('mode 1 or 3 consumer:', self.conf['mode'])
+        print('mode 1 for consumer Tx:', self.conf['mode'])
         while True:
 
             if self.cst['c2p']['new']:  #transmit or not
@@ -224,7 +232,7 @@ class Consumer:
                 else:
                     self.cst['c2p']['ct'].clear()
                 
-            if self.cst['ctr']['new']: #prepare for N7, mseq is updated by slot 1 #if self.cst['c2p']['mseq'] == self.cst['ctr']['mseq']:
+            if self.cst['ctr']['new']: #prepare for N7, 
                 self.cst['ctr']['new'] = False
                 if len(self.cst['ctr']['pt']) == 4:
                     rcdu = self.ctr_cdu13(self.cst['ctr']['seq'], self.cst['ctr']['mseq'], self.cst['ctr']['pt'])
@@ -239,21 +247,16 @@ class Consumer:
 
     #-
     def Mode3Rx(self):
-        print('mode 1 or 3 for ctr', self.conf['mode'])
-        while True: #slot 1
-            
-            bstring = self.sub_socket.recv()
-            slst= bstring.split()
-            sub_topic=json.loads(slst[0])
-            messagedata =b''.join(slst[1:])
-            message = json.loads(messagedata) 
+        print('mode 3 for consumer Rx', self.conf['mode'])
+        while True: 
+            sub_topic, message = self.receive('rx:', False) 
             cdu = message['cdu']
-            #sub_topic, cdu = self.receive('rx:')
-            if sub_topic == self.conf['ctr_sub']:                       #from N0 #prepare N6 #if cdu['mseq'] > self.cst['c2p']['mseq']:                   #prepare for N6
+            print('rx:', sub_topic, message)
+            if sub_topic == self.conf['ctr_sub']:                       #from N0 #prepare N6 
                 if cdu['ct']:
                     cdu['ct'].append(time.time_ns())
                     if len(cdu['ct']) == 2:
-                        self.cst['c2p']['ct'] = cdu['ct'].copy()#copy.deepcopy(cdu['ct'])
+                        self.cst['c2p']['ct'] = cdu['ct'].copy()
                         self.cst['c2p']['mseq'] = cdu['mseq']
                         self.cst['c2p']['new'] = True                       #prepare for N7
                 #local
@@ -266,13 +269,16 @@ class Consumer:
                         self.conf['mode'] = cdu['mode']
                         self.cst['ctr']['seq'] = cdu['seq']                 #ack
                         self.cst['ctr']['new'] = True 
-
-                print("rx ctr N0 :",cdu)
-            if sub_topic == self.conf['u_sub']: #if cdu['mseq'] > self.cst['ctr']['mseq']:
+                    #-------------update user-plane
+                    if 'urst' in cdu:
+                        self.cst['c2p']['urst'] = cdu['urst']
+                        self.cst['c2p']['update'] = True
+                    #-------------updated
+            if sub_topic == self.conf['u_sub']:                         #from N4
                 if cdu['pt']:
                     cdu['pt'].append(time.time_ns())
                     if len(cdu['pt']) == 4:
-                        self.cst['ctr']['pt'] = cdu['pt'].copy() #copy.deepcopy(cdu['pt'])
+                        self.cst['ctr']['pt'] = cdu['pt'].copy()
                         self.cst['ctr']['mseq'] = cdu['mseq']
                         self.cst['ctr']['new'] = True
                 #local
@@ -280,12 +286,11 @@ class Consumer:
                     self.cst['c2p']['seq'] = cdu['seq']
                     self.cst['c2p']['new'] = True 
                     self.deliver_sdu(message['sdu'])
-                print("rx c2p N4:",cdu)
 
             time.sleep(self.conf['dly'])
 
     def Mode3Tx(self): #slot 2, 
-        print('mode 1 or 3 for ctr', self.conf['mode'])
+        print('mode 3 for consumer Tx', self.conf['mode'])
         while True:
             if self.cst['ctr']['new']: #prepare for N7, mseq is updated by slot 1 #if self.cst['c2p']['mseq'] == self.cst['ctr']['mseq']:
                 self.cst['ctr']['new'] = False
@@ -302,7 +307,16 @@ class Consumer:
                 else:
                     rcdu['ct'].clear()
                 self.transmit(rcdu, 'tx c2p N6:')
-
+                #----------- refresh user-plane
+                if self.cst['c2p']['update']:
+                    if self.cst['c2p']['urst']:
+                        self.conf['mode'] = 1
+                        self.cst['c2p']['seq'] = 0
+                        self.cst['c2p']['update'] = False
+                    else:
+                        self.conf['mode'] = 3
+                        self.cst['c2p']['update'] = False
+                #----------- refreshed
             time.sleep(self.conf['dly'])
     #----------------Cons-TX-RX ------------------
     def adopt_met(self, met):                       #for the time being, clear memory
@@ -315,21 +329,21 @@ class Consumer:
             return False
     #-------------------------------U-RX-SDU ------------------------
     def deliver_sdu(self, sdu):
-        if len(self.subsdu) < self.subsdu.maxlen:
+        if self.conf['mode'] in [2,3] and len(self.subsdu) < self.subsdu.maxlen:
            self.subsdu.append(sdu)
         else:
-            print('sdu receive buffer full')
+            print('sdu receive buffer full or disabled')
     #------------------ User application  interface -------
     #deliver user payload 
     def sink(self):
         print('---- :', self.subsdu)
-        while self.conf['mode'] in [2,3]:
+        while True:
             if self.subsdu:
                 data = self.subsdu.popleft()
                 print('delivered sdu', data)
 
 #-------------------------------------------------------------------------
-CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 4}
+CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 0}
 #CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':104, 'u_pub':6})
 CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':4, 'u_pub':6})
 #4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3
@@ -337,6 +351,9 @@ CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':4, 'u_pub':6})
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         CONF['mode'] = int(sys.argv[1])
+    elif len(sys.argv) > 2:
+        print('usage: python3 consumer.py mode (0,1,2,3,4; default mode 0)')
+        exit()
     print(sys.argv)
     inst=Consumer(CONF) 
     inst.run()

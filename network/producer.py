@@ -31,7 +31,7 @@ from threading import Thread
 #==========================================================================
 class Producer:
     def __init__(self, conf):
-        self.conf = conf.copy()
+        self.conf = copy.deepcopy(conf)
         print('Produce:', self.conf)
         self.id = self.conf['key'][0]
         self.open()
@@ -71,8 +71,8 @@ class Producer:
     #--------------------------------------
     #producer state template
     def pst_template(self):
-        ctr= {'chan': self.conf['ctr_pub'],'seq':0,'mseq': 0, 'ct':[], 'new': True, 'crst': False}
-        p2c= {'chan': self.conf['u_pub'], 'seq':0, 'mseq':0,  'pt':[], 'new': True}
+        ctr= {'chan': self.conf['ctr_pub'],'seq':0,'mseq': 0, 'ct':[], 'new': True, 'crst': False, 'loop': True}
+        p2c= {'chan': self.conf['u_pub'], 'seq':0, 'mseq':0,  'pt':[], 'new': True, 'urst': False, 'update': False}
         return {'id': self.id, 'key': self.conf['key'], 'ctr': ctr, 'p2c':p2c}
         
     #cdu to N5
@@ -108,7 +108,7 @@ class Producer:
         for t in thread: t.join()
     #device TX
     def transmit(self, rcdu, note, sdu = dict()):
-        message = {'cdu': rcdu, 'sdu': sdu}
+        message = {'cdu': copy.deepcopy(rcdu), 'sdu': copy.deepcopy(sdu)}
         bstring = json.dumps(message)
         self.pub_socket.send_string("%d %s"% (rcdu['chan'], bstring)) 
         print(note, rcdu)
@@ -120,7 +120,7 @@ class Producer:
         messagedata =b''.join(slst[1:])
         message = json.loads(messagedata) 
         cdu = message['cdu']
-        print(note,sub_topic,  message)
+        print(note,sub_topic, message)
         return sub_topic, cdu
     #operation modes 4,0,1,2,3
     def Test(self):
@@ -129,21 +129,21 @@ class Producer:
             sub_topic, cdu = self.receive('rx:')
             self.pst['ctr']['seq'] =cdu['seq']
             rcdu = self.ctr_cdu0(self.pst['ctr']['seq'])
-            self.transmit(rcdu, 'tx:')
+            self.transmit(rcdu, 'test tx:')
             time.sleep(self.conf['dly'])
 
     #receive from permissible interfaces [N0]
     def Mode0(self):
         print('mode 0')
-        while True: 
+        while self.pst['ctr']['loop']: #True: 
             sub_topic, cdu = self.receive('rx:')
             if sub_topic == self.conf['ctr_sub']:                       #N0
                 if cdu['seq'] > self.pst['ctr']['seq']:  #from N0
                     self.pst['ctr']['seq'] = cdu['seq']
                     if cdu['conf']:
-                        conf=cdu['conf'].copy()
-                        self.conf = copy.deepcopy(conf['p'])
-                        print('p', conf['p'])
+                        conf=copy.deepcopy(cdu['conf'])
+                        print('received conf', conf)
+                        self.conf = copy.deepcopy(conf['pc_conf']['p'])
                     else:   #if empty
                         print('no valid conf received', cdu['conf'])
                     #acknowledge any way
@@ -152,6 +152,16 @@ class Producer:
                     if cdu['crst']:
                         self.pst['ctr']['seq'] = 0
                         print('producer reset and wait...') #print('new state', self.pst) 
+                        f = open('p.conf', 'w')
+                        f.write(json.dumps(self.conf))
+                        f.close()
+                        #experiment with starting mode 2, 
+                        '''
+                        if self.conf['mode'] == 2:
+                            print('switch mode to 3') #time.sleep(2) #os.system("python3 producer.py 3")
+                            self.run()
+                            self.state['loop'] = False
+                        '''
             time.sleep(self.conf['dly'])
 
     #receive from permissible interfaces [N6]
@@ -164,6 +174,7 @@ class Producer:
     def Mode2Rx(self): 
         while True: 
             sub_topic,cdu = self.receive('rx:') 
+
             if sub_topic == self.conf['u_sub']:
                 if cdu['seq'] > self.pst['p2c']['seq']:                                 #to N6
                     self.pst['p2c']['seq'] = cdu['seq']
@@ -178,43 +189,43 @@ class Producer:
     '''
 
     def Mode1Rx(self):
-        print('mode 1 in producer', self.conf['mode'])
+        print('mode 1 for producer Rx', self.conf['mode'])
         while True: #slot 1
             sub_topic, cdu = self.receive('rx:')
-            if sub_topic == self.conf['ctr_sub']:                           #prepare for N4
-                #if cdu['mseq'] > self.pst['p2c']['mseq']:                   #prepare for N4 #if 1:
+            if sub_topic == self.conf['ctr_sub']:                           #N0, prepare for N4
                 if cdu['pt']:
                     cdu['pt'].append(time.time_ns())
                     if len(cdu['pt']) == 2:
-                        self.pst['p2c']['pt'] =copy.deepcopy(cdu['pt'])
-                        self.pst['p2c']['mseq'] = cdu['mseq']               #update p2c buffer with the received from N0
+                        self.pst['p2c']['pt'] =cdu['pt'].copy()             #copy.deepcopy(cdu['pt'])
+                        self.pst['p2c']['mseq'] = cdu['mseq']               
                         self.pst['p2c']['new'] = True
+                    else:
+                        self.pst['p2c']['pt'].clear()
+
                 if cdu['seq'] > self.pst['ctr']['seq']:                     #prepare for N5
                     if cdu['met']: 
                         self.adopt_met(cdu['met'])
                         self.pst['ctr']['seq'] = cdu['seq']                     #ack the receivd from N0
                         self.pst['ctr']['new'] = True                           
                         self.pst['ctr']['crst'] = cdu['crst']
-                    print('rx ctr N0')#,cdu)
 
-            if sub_topic == self.conf['u_sub']:                             #prepare for N5
-                #if cdu['mseq'] > self.pst['ctr']['mseq']:  #
+            if sub_topic == self.conf['u_sub']:                             #N6, prepare for N5
                 if cdu['ct']:
                     cdu['ct'].append(time.time_ns())
                     if len(cdu['ct']) == 4:
-                        self.pst['ctr']['ct'] = copy.deepcopy(cdu['ct'])
-                        self.pst['ctr']['mseq'] = cdu['mseq']               #update ctr buffer with the received from N6
+                        self.pst['ctr']['ct'] = cdu['ct'].copy()            #copy.deepcopy(cdu['ct'])
+                        self.pst['ctr']['mseq'] = cdu['mseq']               
                         self.pst['ctr']['new'] = True                           #ack the received from N0
                     else:
                         self.pst['ctr']['ct'].clear()
+
                 if cdu['seq'] > self.pst['p2c']['seq']:                     #prepare for N5
                     self.pst['p2c']['seq'] = cdu['seq']                      #ack the received from N6
                     self.pst['p2c']['new'] = True 
-                print('rx p2c N6')#,cdu)
 
 
     def Mode1Tx(self): #slot 2
-        print('mode 1 in producer ', self.conf['mode'])
+        print('mode 1 for producer Tx', self.conf['mode'])
         while True:
 
             if self.pst['p2c']['new']: #response on N4
@@ -242,16 +253,18 @@ class Producer:
 
     #---
     def Mode3Rx(self):
-        print('mode 1 or 3 for ctr', self.conf['mode'])
+        print('mode 3 for produer Rx', self.conf['mode'])
         while True: #slot 1
-            sub_topic, cdu =self.receive('rx ctr No:')
-            if sub_topic == self.conf['ctr_sub']:                           #prepare for N4
+            sub_topic, cdu =self.receive('rx:')
+            if sub_topic == self.conf['ctr_sub']:                           #from N0, prepare for N4
                 if cdu['pt']:
                     cdu['pt'].append(time.time_ns())
                     if len(cdu['pt']) == 2:
-                        self.pst['p2c']['pt'] = cdu['pt'].copy() #copy.deepcopy(cdu['pt'])
+                        self.pst['p2c']['pt'] = cdu['pt'].copy() 
                         self.pst['p2c']['mseq'] = cdu['mseq']               #update p2c buffer with the received from N0
                         self.pst['p2c']['new'] = True
+                    else:
+                        self.pst['p2c']['pt'].clear()
                 #local
                 if cdu['seq'] > self.pst['ctr']['seq']:                     #prepare for N5
                     if cdu['met']: 
@@ -262,15 +275,18 @@ class Producer:
                         self.conf['mode'] = cdu['mode']
                         self.pst['ctr']['seq'] = cdu['seq']                     #ack the receivd from N0
                         self.pst['ctr']['new'] = True                           
-                print('rx ctr N0:',cdu)
+                    #update user plane state
+                    if 'urst' in cdu:
+                        self.pst['p2c']['urst'] = cdu['urst']                   #can be F or T
+                        self.pst['p2c']['update'] = True
 
             if sub_topic == self.conf['u_sub']:                             #prepare for N5
                 if cdu['ct']:
                     cdu['ct'].append(time.time_ns())
                     print(cdu)
                     if len(cdu['ct']) == 4:
-                        self.pst['ctr']['ct'] = cdu['ct'].copy() #copy.deepcopy(cdu['ct'])
-                        self.pst['ctr']['mseq'] = cdu['mseq']               #update ctr buffer with the received from N6
+                        self.pst['ctr']['ct'] = cdu['ct'].copy()
+                        self.pst['ctr']['mseq'] = cdu['mseq']  
                         self.pst['ctr']['new'] = True                           #ack the received from N0
                     else:
                         self.pst['ctr']['ct'].clear()
@@ -278,13 +294,11 @@ class Producer:
                 if cdu['seq'] > self.pst['p2c']['seq']:                     #prepare for N5
                     self.pst['p2c']['seq'] = cdu['seq']                      #ack the received from N6
                     self.pst['p2c']['new'] = True 
-                print('rx p2c N6:',cdu)
 
             time.sleep(self.conf['dly'])
 
-    #def Mode13TxN5(self): #slot 2
     def Mode3Tx(self): #slot 2
-        print('mode 1 or 3 for ctr', self.conf['mode'])
+        print('mode 3 for producer Tx', self.conf['mode'])
         while True:
             if self.pst['ctr']['new']: #response on N5, no SDU
                 self.pst['ctr']['new'] = False 
@@ -303,6 +317,16 @@ class Producer:
                 else:
                     rcdu['pt'].clear()
                 self.transmit(rcdu, 'tx p2c N4:', self.get_sdu()) 
+                #----------   refresh user plane
+                if self.pst['p2c']['update']:
+                    if self.pst['p2c']['urst']:
+                        self.conf['mode'] = 1
+                        self.pst['p2c']['seq'] = 0
+                        self.pst['p2c']['update'] = False
+                    else:
+                        self.conf['mode'] = 3
+                        self.pst['p2c']['update'] = False #self.pst['p2c']['urst'] = False
+                #----------- end user-plane refresh
 
             time.sleep(self.conf['dly'])
     #--------------------------------Prod-TX-RX------------------------
@@ -327,8 +351,8 @@ class Producer:
     #obain user payload
     def source(self):
         print('----:', self.pubsdu)
-        a = deque(list('this is a test'))
-        while self.conf['mode'] in [2,3]:
+        a = deque(list('this-is-a-test'))
+        while True: 
             if len(self.pubsdu) < self.pubsdu.maxlen: 
                 self.seq += 1
                 sdu = {'seq': self.seq, 'pld': a[0]} #sdu = {'seq': self.seq, 'pld': random.choice(['p','r','o','d','u','c','e','r'])}
@@ -348,8 +372,9 @@ CONF.update({'ctr_sub':0, 'ctr_pub':5, 'u_sub': 6, 'u_pub':4})
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         CONF['mode'] = int(sys.argv[1])
-        #print('usage: python3 producer.py')
-        #exit()
+    elif len(sys.argv) > 2:
+        print('usage: python3 producer.py mode (0,1,2,3,4; default mode 0)')
+        exit()
     print(sys.argv)
     inst=Producer(CONF)
     inst.run()
