@@ -370,10 +370,16 @@ CONF.update({'ctr_sub':0, 'ctr_pub':5, 'u_sub': 6, 'u_pub':4})
 #'key': (pid, cid)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if '-local' in sys.argv and len(sys.argv) > 2:
+        CONF['mode'] = int(sys.argv[2])
+        f =open('p.conf', 'r')
+        conf = f.read()
+        CONF = json.loads(conf)
+    elif len(sys.argv) > 1:
         CONF['mode'] = int(sys.argv[1])
     elif len(sys.argv) > 2:
         print('usage: python3 producer.py mode (0,1,2,3,4; default mode 0)')
+        print('usage: python3 producer.py -local mode (use local p.conf)')
         exit()
     print(sys.argv)
     inst=Producer(CONF)

@@ -349,10 +349,16 @@ CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':4, 'u_pub':6})
 #4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3
 #'key': (pid,cid) where cid=id for consumer
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if '-local' in sys.argv and len(sys.argv) > 2:
+        CONF['mode'] = int(sys.argv[2])
+        f =open('c.conf', 'r')
+        conf = f.read()
+        CONF = json.loads(conf)
+    elif len(sys.argv) > 1:
         CONF['mode'] = int(sys.argv[1])
     elif len(sys.argv) > 2:
         print('usage: python3 consumer.py mode (0,1,2,3,4; default mode 0)')
+        print('usage: python3 consumer.py -local mode (use local c.conf')
         exit()
     print(sys.argv)
     inst=Consumer(CONF) 

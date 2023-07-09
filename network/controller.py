@@ -37,7 +37,14 @@ class Controller:
     def __init__(self, conf=None):
         self.co_state = dbase['state']
         self.co_conf =  dbase['conf']
-        self.tag = get_tag(self.co_state, "Experiment 1")
+        if conf['mode'] == 1:
+            self.tag = get_tag(self.co_state, 'Experiment 1')
+        elif conf['mode'] == 3:
+            self.tag = get_tag(self.co_state, 'Experiment 2')
+        else:
+            print('no need of DB for mode:', conf['mode'])
+
+        #self.tag = get_tag(self.co_state, "Experiment 1")
         print("db tag", self.tag)
 
         self.conf = copy.deepcopy(conf)
@@ -94,7 +101,8 @@ class Controller:
     #state register, converted to CDU by make_cdu(key)
     def template_ctr(self): #, crst=False, urst=False): #for mode 1,3
         st ={'id':self.id,'chan':self.conf['ctr_pub'],'key':self.conf['key'],'seq':0,'mseq':0,'tseq':[0,0],'tmseq':[0,0],'loop':True,'sent':False,'ack':[True,True]}
-        st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'],'msr':True,  'crst': False,'urst': False})
+        st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'], 'crst': False,'urst': False})
+        #st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'],'msr':True,  'crst': False,'urst': False})
         #st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'],'msr':True, 'conf': copy.deepcopy(self.conf), 'crst': False,'urst': False})
         print('state:', st) #pprint.pprint(st)
         return st
@@ -362,7 +370,7 @@ class Controller:
             l = [self.state['pt'][1]-self.state['pt'][0],  self.state['pt'][5]-self.state['pt'][4]]
             r = [self.state['ct'][1]-self.state['ct'][0],  self.state['ct'][5]-self.state['ct'][4]]
             
-            self.state['met'] = {'pco':  (pc[0]-pc[1])/2.0, 'pctm': (pc[0]+pc[1])/2.0, 'lo': (l[0]-r[1])/2.0, 'ltm':(l[0]+r[1])/2.0, 'ro': (r[0]- l[1])/2.0, 'rtm':(r[0]+l[1])/2.0}
+            self.state['met']={'m-offset':(pc[0]-pc[1])/2.0,'m-delay':(pc[0]+pc[1])/2.0,'l-offset':(l[0]-r[1])/2.0,'l-delay':(l[0]+r[1])/2.0,'r-offset':(r[0]- l[1])/2.0,'r-delay':(r[0]+l[1])/2.0}
             #stored to DB the measurement states for producer and consumer 
             if add_data(self.co_state, self.tag, self.state['met']):
                 print('computed and saved')
@@ -379,6 +387,8 @@ def get_tag(col, mark=None):
         tag = {'tag': mark}
     else:
         tag = {'tag': 'default'}# tag = {'mark': time.ctime()[4:]}
+
+    print('input filter tag', tag)
 
     rec=col.find_one(tag)
     if rec and isinstance(rec['data'], list):
@@ -472,7 +482,7 @@ C_CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub': 4, 'u_pub': 6})
 #from producer import CONF as P_CONF
 #from consumer import CONF as C_CONF
 
-CONF = {"ipv4":"127.0.0.1" , "sub_port": "5570", "pub_port": "5568", "id":0, "dly":0, "print": True, "ver": 0, 'cnt':10, "mode":0, "uperiod": 0}
+CONF = {"ipv4":"127.0.0.1" , "sub_port": "5570", "pub_port": "5568", "id":0, "dly":0, "print": True, "ver": 0,  'cnt':20, "mode":0, "uperiod": 0}
 CONF.update({"ctr_pub": 0,  "ctr_subp": 5, "ctr_subc":7, "key":[1,2], 'pc_conf':{'p': P_CONF, 'c':C_CONF}})
 
 #ctr_pub: multicast interface
@@ -485,9 +495,11 @@ CONF.update({"ctr_pub": 0,  "ctr_subp": 5, "ctr_subc":7, "key":[1,2], 'pc_conf':
 #uperiod: periods length (seconds) for u-plane flip-flop (experiment), 0 disables this feature
 
 if __name__ == "__main__":
+    #test DB
     if '-testdb' in sys.argv:
         test_db()
         exit()    
+    #prepare configuration entry in DB
     if '-prepdb' in sys.argv:
         set_mode(CONF, 0)
         if len(sys.argv) <3:
