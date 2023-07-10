@@ -362,8 +362,10 @@ class Producer:
             else:
                 time.sleep(self.conf['dly'])
                 print('source buffer full')
-#------------------------------ TEST Producer  -------------------------------------------
-CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':1., 'maxlen': 4, 'print': True, 'mode':0}
+#------------------- ----------- TEST Producer  -------------------------------------------
+IPv4= "127.0.0.1" 
+IPv4= "192.168.1.37"
+CONF = {'ipv4':IPv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':1., 'maxlen': 4, 'print': True, 'mode':0}
 #CONF.update({'ctr_sub':0, 'ctr_pub':5, 'u_sub': 106, 'u_pub':4})
 CONF.update({'ctr_sub':0, 'ctr_pub':5, 'u_sub': 6, 'u_pub':4})
 #4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3

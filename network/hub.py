@@ -155,6 +155,7 @@ class PubFwdSub:
 #P2F2S_CONF = {'ipv4': '127.0.0.1', 'pub_port': "5568", 'sub_port': "5570", 'pubtopics':[[0,1,2,3,4],[10,11,12,13]], 'subtopics':[[0,1,4], [10,13]], 'dly':2.}
 
 ipv4 = '0.0.0.0' #any ip on the current container or host
+ipv4 = "192.168.1.37"
 AUTOGET = False 
 if AUTOGET: #takes ip of the current container or host
     import socket

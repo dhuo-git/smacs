@@ -342,8 +342,11 @@ class Consumer:
                 data = self.subsdu.popleft()
                 print('delivered sdu', data)
 
-#-------------------------------------------------------------------------
-CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 0}
+# -------------------------------------------------------------------------
+
+IPv4= "127.0.0.1" 
+IPv4= "192.168.1.37"
+CONF = {'ipv4':IPv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 0}
 #CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':104, 'u_pub':6})
 CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':4, 'u_pub':6})
 #4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3

@@ -1,27 +1,22 @@
 '''
 controller.py
-    implemented multicast service for producer.py and consumer.py,  transmits on N0,  receives on N5 (from Producer) and N7 (from Consumer)
-    configured by CONF,  may need medium.py in background for channel simulation
+    transmits on N0,  receives on N5 (from Producer) and N7 (from Consumer),  configured by CONF,
 prerequisites:
-    medium.py/hub.py, mongod
+    mongod,  hub.py
 operates as client:
     0.) in mode 4: test hub
-    1.) in mode 0: send conf to N0 and receive confirmation on N5/7
-    2.) in mode 0: retrieve conf from DB, if difers from self.conf, update itself and Prod and Cons
-    3.) in mode 1, 3: send packet with 'seq' on N0 and receive packet with the same 'seq' on N5/7 (locoal protocol)
-    4.) in mode 1, 3: send packet with 'mseq' on N0 and receive packet with the same 'mseq' on N5/7 (global protocol)
-    5.) in mode 1, 3: evaluate d and o using returned pt and ct from P and C
-    6.) in mode 1, 3: store state for each key=(pid,cid) to DB and send adaptation command on N5/N7
-    7.) in mode 1, 3: check for update of conf in DB and update conf, including 'cnt' for measurement 
+    1.) in mode 0: retrieve conf from DB, if version matches required, synchronize with Prod and Cons: send conf on N0 and receive confirmation on N5/7
+    2.) in mode 1, 3: send packet with 'seq' on N0 and receive packet with the same 'seq' on N5/7 (locoal protocol)
+    3.) in mode 1, 3: send packet with 'mseq' on N0 and receive packet with the same 'mseq' on N5/7 (global protocol)
+    4.) in mode 1, 3: evaluate d and o using returned pt and ct from P and C
+    5.) in mode 1, 3: store met vector to DB and send met on N5/N7
 
 TX-message: {'cdu':dict(), 'sdu': dict()}    on N0
 RX-message: {'cdu':dict(), 'sdu': dict()}    on N5, N7
+DB name : smacs
+collection: state, conf 
 
-Mode Test, 0, 1,3: Independent TX and RX (ITR)
-
-    DB name : smacs
-    collection: state, conf #e.g. smacs.state.insert(state), smacs.conf.find_one({'tag':tagitem})
-5/3/2023/nj, laste update 7/3/2023
+5/3/2023/nj, laste update 7/10/2023
 '''
 import zmq 
 import time, sys,json, os, pprint, copy
@@ -37,15 +32,16 @@ class Controller:
     def __init__(self, conf=None):
         self.co_state = dbase['state']
         self.co_conf =  dbase['conf']
+        #prepare for state storage in DB
         if conf['mode'] == 1:
             self.tag = get_tag(self.co_state, 'Experiment 1')
+            print("mode 1 db tag", self.tag)
         elif conf['mode'] == 3:
             self.tag = get_tag(self.co_state, 'Experiment 2')
+            print("mode 3 db tag", self.tag)
         else:
-            print('no need of DB for mode:', conf['mode'])
+            print('no need of state storage for mode:', conf['mode'])
 
-        #self.tag = get_tag(self.co_state, "Experiment 1")
-        print("db tag", self.tag)
 
         self.conf = copy.deepcopy(conf)
         self.open()
@@ -81,7 +77,7 @@ class Controller:
         print('Controller sockets closed and context terminated')
 
     #packet for mode 0
-    def cdu0(self, seq, conf=dict()): #, crst=False, urst=False):
+    def cdu0(self, seq, conf=dict()):
         st = {'id':self.id, 'chan': self.conf['ctr_pub'], 'key':self.conf['key']}
         return {**st,'seq':seq, 'conf':copy.deepcopy(conf), 'crst':self.state['crst'], 'urst': self.state['urst']}
 
@@ -93,17 +89,14 @@ class Controller:
     def cdu3(self, cseq, mseq):#, met, mode):
         st = {'id': self.id, 'chan': self.conf['ctr_pub'], 'key':self.conf['key'].copy(), 'seq':cseq, 'mseq':mseq, 'ct':[], 'pt':[]}
         return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met']), 'mode':self.state['mode']}
-        #return {**st,  'crst': self.state['crst'], 'urst': self.state['urst'], 'uon': self.state['uon'],  'met':self.state['met'].copy(), 'mode':self.state['mode']}
 
     def cdu_test(self, seq):
         return {'id': self.id, 'chan': self.conf['ctr_pub'], 'seq': seq, 'time':time.time()}
 
     #state register, converted to CDU by make_cdu(key)
-    def template_ctr(self): #, crst=False, urst=False): #for mode 1,3
+    def template_ctr(self): 
         st ={'id':self.id,'chan':self.conf['ctr_pub'],'key':self.conf['key'],'seq':0,'mseq':0,'tseq':[0,0],'tmseq':[0,0],'loop':True,'sent':False,'ack':[True,True]}
         st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'], 'crst': False,'urst': False})
-        #st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'],'msr':True,  'crst': False,'urst': False})
-        #st.update({'ct':[],'pt':[],'met':{},'mode':self.conf['mode'], 'cnt':self.conf['cnt'],'msr':True, 'conf': copy.deepcopy(self.conf), 'crst': False,'urst': False})
         print('state:', st) #pprint.pprint(st)
         return st
     #
@@ -419,7 +412,7 @@ def add_data(col, tag, entry):
 def update_conf_db(conf, v=0):
     col= dbase['conf']
     #v = max(v, conf['ver'])
-    doc =  col.find_one({'ver':v}) # conf['ver']}) #doc =  self.co_conf.find_one(tag)
+    doc =  col.find_one({'ver':v}) 
     if doc:
         #conf['ver'] = doc['ver'] +1
         rst = col.replace_one(doc, conf)
@@ -473,16 +466,17 @@ def test_db():
             doc2= col.find_one(tag)
             print('updated:',doc2)
 #------------------------------ TEST -------------------------------------------
-
-P_CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':1., 'maxlen': 4, 'print': True, 'mode': 0}
+ipv4= "127.0.0.1" 
+ipv4= "192.168.1.37"
+P_CONF = {'ipv4':ipv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':0., 'maxlen': 4, 'print': True, 'mode': 0}
 P_CONF.update({'ctr_sub': 0, 'ctr_pub': 5, 'u_sub': 6, 'u_pub': 4})
-C_CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 0}
+C_CONF = {'ipv4':ipv4 , 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':0., 'maxlen': 4,  'print': True, 'mode': 0}
 C_CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub': 4, 'u_pub': 6})
 
 #from producer import CONF as P_CONF
 #from consumer import CONF as C_CONF
 
-CONF = {"ipv4":"127.0.0.1" , "sub_port": "5570", "pub_port": "5568", "id":0, "dly":0, "print": True, "ver": 0,  'cnt':20, "mode":0, "uperiod": 0}
+CONF = {"ipv4":ipv4 , "sub_port": "5570", "pub_port": "5568", "id":0, "dly":0, "print": True, "ver": 0,  'cnt':20, "mode":0, "uperiod": 0}
 CONF.update({"ctr_pub": 0,  "ctr_subp": 5, "ctr_subc":7, "key":[1,2], 'pc_conf':{'p': P_CONF, 'c':C_CONF}})
 
 #ctr_pub: multicast interface
