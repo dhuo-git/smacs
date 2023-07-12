@@ -162,13 +162,14 @@ class Consumer:
         print('mode 2')
         while True: #receive from permissible interfaces [N0, N4]
            
-            bstring = self.sub_socket.recv()
-            slst= bstring.split()
-            sub_topic=json.loads(slst[0])
+            #bstring = self.sub_socket.recv()
+            #slst= bstring.split()
+            #sub_topic=json.loads(slst[0])
+            sub_topic, message = self.receive('rx:', False)
             if sub_topic == self.conf['u_sub']:                       #from N4
-                messagedata =b''.join(slst[1:])
-                message = json.loads(messagedata) 
-                print('rx', message)
+                #messagedata =b''.join(slst[1:])
+                #message = json.loads(messagedata) 
+                #print('rx', message)
                 cdu = message['cdu']
                 sdu = message['sdu']
                 #slot 2
@@ -205,7 +206,7 @@ class Consumer:
                         self.cst['ctr']['seq'] = cdu['seq']                 #ack
                         self.cst['ctr']['new'] = True 
                         self.cst['ctr']['crst'] = cdu['crst']
-                    print("rx ctr N0 :",cdu)
+                    #print("rx ctr N0 :",cdu)
 
             if sub_topic == self.conf['u_sub']:
                 if cdu['pt']:
@@ -217,7 +218,8 @@ class Consumer:
                 if cdu['seq'] > self.cst['c2p']['seq']:
                     self.cst['c2p']['seq'] = cdu['seq']
                     self.cst['c2p']['new'] = True 
-                print("rx c2p N4:",cdu)
+                #print("rx c2p N4:",cdu)
+            time.sleep(self.conf['dly'])
 
     def Mode1Tx(self): #slot 2, 
         print('mode 1 for consumer Tx:', self.conf['mode'])
@@ -317,7 +319,6 @@ class Consumer:
                         self.conf['mode'] = 3
                         self.cst['c2p']['update'] = False
                 #----------- refreshed
-            time.sleep(self.conf['dly'])
     #----------------Cons-TX-RX ------------------
     def adopt_met(self, met):                       #for the time being, clear memory
         if isinstance(met,dict):
@@ -344,26 +345,33 @@ class Consumer:
 
 # -------------------------------------------------------------------------
 
-IPv4= "127.0.0.1" 
-IPv4= "192.168.1.37"
-CONF = {'ipv4':IPv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 0}
+ipv4= "127.0.0.1" 
+#ipv4= "192.168.1.204"      #system76
+#ipv4= "192.168.1.99"       #lenovo P15
+#ipv4= "192.168.1.37"       #
+CONF = {'ipv4':ipv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':1., 'maxlen': 4,  'print': True, 'mode': 0}
 #CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':104, 'u_pub':6})
 CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub':4, 'u_pub':6})
+
 #4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3
-#'key': (pid,cid) where cid=id for consumer
 if __name__ == "__main__":
     if '-local' in sys.argv and len(sys.argv) > 2:
-        CONF['mode'] = int(sys.argv[2])
         f =open('c.conf', 'r')
-        conf = f.read()
-        CONF = json.loads(conf)
+        file = f.read()
+        conf = json.loads(file)
+        print(conf)
+        print(sys.argv)
+        conf['mode'] = int(sys.argv[2])
+        inst=Consumer(conf) 
+        inst.run()
+        inst.close()
     elif len(sys.argv) > 1:
         CONF['mode'] = int(sys.argv[1])
-    elif len(sys.argv) > 2:
-        print('usage: python3 consumer.py mode (0,1,2,3,4; default mode 0)')
-        print('usage: python3 consumer.py -local mode (use local c.conf')
+        print(sys.argv)
+        inst=Consumer(CONF) 
+        inst.run()
+        inst.close()
+    else: 
+        print('usage: python3 consumer.py mode (0,1,2,3,4)')
+        print('usage: python3 consumer.py -local mode (use local c.conf)')
         exit()
-    print(sys.argv)
-    inst=Consumer(CONF) 
-    inst.run()
-    inst.close()

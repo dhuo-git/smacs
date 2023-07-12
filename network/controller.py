@@ -196,8 +196,8 @@ class Controller:
                     self.state['sent'] = False                                      #internal control
                     self.transmit(cdu, 'tx:\n')
                 else:                   #not sent yet
-                    #tag = {"ver":self.conf['ver']+1}                                   #real deployment, need GUI for MongoDB to input new conf
-                    tag = {'ver':self.conf['ver']}                                      #for test only
+                    tag = {"ver":self.conf['ver']+1}                                   #real deployment, need GUI for MongoDB to input new conf
+                    #tag = {'ver':self.conf['ver']}                                      #for test only
                     doc = self.co_conf.find_one(tag)                                  #and check DB for the latest update
                     if doc:
                         print("got 'conf' from DB")
@@ -212,7 +212,6 @@ class Controller:
                     self.state['sent'] = True                                       #first step of hand-shake
 
                 self.state['tseq'] = [0,0]
-
             time.sleep(self.conf['dly'])
         else:
             print('TX stopped')
@@ -233,7 +232,7 @@ class Controller:
                     self.state['tmseq'][0] =  cdu['mseq']
                     self.state['ack'][0]= True
             #RX-C
-            elif sub_topic == self.conf['ctr_subc']:  #consumer on n7
+            if sub_topic == self.conf['ctr_subc']:  #consumer on n7
                 if cdu['seq'] > self.state['seq']:             #local protocol
                     self.state['tseq'][1] = cdu['seq']
                     self.state['ack'][1]= True
@@ -242,9 +241,10 @@ class Controller:
                     self.state['pt'] = copy.deepcopy(cdu['pt'])
                     self.state['tmseq'][1] =  cdu['mseq']
                     self.state['ack'][1]= True
+            time.sleep(self.conf['dly']) 
         else:
             print("\n RX stopped,  state at Rx", self.state)
-            return #$time.sleep(self.conf['dly'])
+            return 
     #handle receive CDU : RX+Handler
     def Mode1Tx(self):
         print('mode 1,3, Tx', self.state['mode'])
@@ -293,7 +293,7 @@ class Controller:
                     self.state['tmseq'][0] =  cdu['mseq']
                     self.state['ack'][0]= True
             #RX-C
-            elif sub_topic == self.conf['ctr_subc']:  #consumer on n7
+            if sub_topic == self.conf['ctr_subc']:  #consumer on n7
                 if cdu['seq'] > self.state['seq']:             #local protocol
                     self.state['tseq'][1] = cdu['seq']
                     self.state['ack'][1]= True
@@ -302,9 +302,10 @@ class Controller:
                     self.state['pt'] = cdu['pt'].copy() #copy.deepcopy(cdu['pt'])
                     self.state['tmseq'][1] =  cdu['mseq']
                     self.state['ack'][1]= True
+            time.sleep(self.conf['dly'])
         else:
             print("\n RX stopped,  state at Rx", self.state)
-            return #$time.sleep(self.conf['dly'])
+            return 
     #handle receive CDU : RX+Handler
     def Mode3Tx(self):
         print('mode 3, Tx', self.state['mode'])
@@ -467,7 +468,9 @@ def test_db():
             print('updated:',doc2)
 #------------------------------ TEST -------------------------------------------
 ipv4= "127.0.0.1" 
-ipv4= "192.168.1.37"
+#ipv4= "192.168.1.204"               #system76
+#ipv4= "192.168.1.99"               #lenovo P21
+#ipv4= "192.168.1.37"
 P_CONF = {'ipv4':ipv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':0., 'maxlen': 4, 'print': True, 'mode': 0}
 P_CONF.update({'ctr_sub': 0, 'ctr_pub': 5, 'u_sub': 6, 'u_pub': 4})
 C_CONF = {'ipv4':ipv4 , 'sub_port': "5570", 'pub_port': "5568", 'key':[1,2], 'dly':0., 'maxlen': 4,  'print': True, 'mode': 0}

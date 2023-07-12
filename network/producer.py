@@ -223,6 +223,7 @@ class Producer:
                     self.pst['p2c']['seq'] = cdu['seq']                      #ack the received from N6
                     self.pst['p2c']['new'] = True 
 
+            time.sleep(self.conf['dly'])
 
     def Mode1Tx(self): #slot 2
         print('mode 1 for producer Tx', self.conf['mode'])
@@ -328,7 +329,6 @@ class Producer:
                         self.pst['p2c']['update'] = False #self.pst['p2c']['urst'] = False
                 #----------- end user-plane refresh
 
-            time.sleep(self.conf['dly'])
     #--------------------------------Prod-TX-RX------------------------
     def adopt_met(self, met):                       #for the time being, clear memory
         if isinstance(met,dict):
@@ -363,28 +363,34 @@ class Producer:
                 time.sleep(self.conf['dly'])
                 print('source buffer full')
 #------------------- ----------- TEST Producer  -------------------------------------------
-IPv4= "127.0.0.1" 
-IPv4= "192.168.1.37"
-CONF = {'ipv4':IPv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':1., 'maxlen': 4, 'print': True, 'mode':0}
+ipv4= "127.0.0.1" 
+#ipv4= "192.168.1.204"   #system76
+#ipv4= "192.168.1.99"    #lenovo P15
+#ipv4= "192.168.1.37"    #
+CONF = {'ipv4':ipv4, 'sub_port': "5570", 'pub_port': "5568", 'key':[1, 2], 'dly':1., 'maxlen': 4, 'print': True, 'mode':0}
 #CONF.update({'ctr_sub':0, 'ctr_pub':5, 'u_sub': 106, 'u_pub':4})
 CONF.update({'ctr_sub':0, 'ctr_pub':5, 'u_sub': 6, 'u_pub':4})
-#4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3
-#'key': (pid, cid)
 
+#4 operation modes: ('u','ctr') =FF, FT,TF, TT =  00, 01, 10, 11 =0,1,2,3
 if __name__ == "__main__":
     if '-local' in sys.argv and len(sys.argv) > 2:
-        CONF['mode'] = int(sys.argv[2])
         f =open('p.conf', 'r')
-        conf = f.read()
-        CONF = json.loads(conf)
+        file = f.read()
+        conf = json.loads(file)
+        print(conf)
+        print(sys.argv)
+        conf['mode'] = int(sys.argv[2])
+        inst=Producer(conf)
+        inst.run()
+        inst.close()
     elif len(sys.argv) > 1:
         CONF['mode'] = int(sys.argv[1])
-    elif len(sys.argv) > 2:
-        print('usage: python3 producer.py mode (0,1,2,3,4; default mode 0)')
+        print(sys.argv)
+        inst=Producer(CONF)
+        inst.run()
+        inst.close()
+    else:              
+        print('usage: python3 producer.py mode (0,1,2,3,4)')
         print('usage: python3 producer.py -local mode (use local p.conf)')
         exit()
-    print(sys.argv)
-    inst=Producer(CONF)
-    inst.run()
-    inst.close()
 

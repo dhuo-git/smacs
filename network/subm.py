@@ -103,9 +103,10 @@ class Sub:
     '''
 
 #-------------------------------------------------------------------------
-CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'print': True}
-#CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[1,2,3], 'sub_id':2, 'dly':1., 'name': 'Client', 'tstmp': True, 'maxlen':10, 'print': False}
-#CONF = {'ipv4':"127.0.0.1" , 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'tstmp': True, 'maxlen':10, 'print': True}
+ipv4 = "127.0.0.1" 
+ipv4 = '192.168.1.204'
+ipv4 = '192.168.1.99'
+CONF = {'ipv4':ipv4, 'sub_port': "5570", 'subtopics':[0,1,2,3,4], 'sub_id':2, 'dly':1., 'name': 'Client', 'print': True}
 if __name__ == "__main__":
     ''' multiprocessing does not work, it seems to have probem to access the Q from two different processes
     from multiprocessing import Process

@@ -96,7 +96,10 @@ class Pub:
         self.context.term()
         print('pub socket closed and context terminated')
 #------------------------------ TEST -------------------------------------------
-CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0], 'pub_id':1,'dly':2., 'name': 'Server','tstmp':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #template configuration 
+ipv4 ='127.0.0.1' 
+ipv4 = '192.168.1.204'
+ipv4 = '192.168.1.99'
+CONF = {'ipv4':ipv4, 'pub_port': "5568", 'pubtopics':[0], 'pub_id':1,'dly':2., 'name': 'Server','tstmp':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #template configuration 
 #CONF = {'ipv4':'127.0.0.1' , 'pub_port': "5568", 'pubtopics':[0,1,2,3,4], 'pub_id':1,'dly':2., 'name': 'Server','tstmp':True,  'maxlen': 4, 'sdu':{'seq':0}, 'print': True} #template configuration 
 
 if __name__ == "__main__":
