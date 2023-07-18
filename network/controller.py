@@ -13,10 +13,11 @@ operates as client:
 
 TX-message: {'cdu':dict(), 'sdu': dict()}    on N0
 RX-message: {'cdu':dict(), 'sdu': dict()}    on N5, N7
-DB name : smacs
+dependence: hub.py and MongoDB 
+db-name: smacs
 collection: state, conf 
 
-5/3/2023/nj, laste update 7/10/2023
+5/3/2023/nj, laste update 7/13/2023, PoC
 '''
 import zmq 
 import time, sys,json, os, pprint, copy
@@ -277,6 +278,9 @@ class Controller:
                     self.transmit(cdu, 'priori met tx:')
                     self.state['tmseq'] = [0,0]
                 print('next measurement', self.state['mseq'])
+        else:
+            print("\n TX stopped,  state at Tx", self.state)
+            return 
     #Mode 3
     def Mode3Rx(self):
         print('mode 3, Rx', self.state['mode'])
@@ -354,6 +358,9 @@ class Controller:
                     self.state['tmseq'] = [0,0]
 
                 print('next measurement', self.state['mseq'])
+        else:
+            print("\n TX stopped,  state at Tx", self.state)
+            return 
 
     #compute measurement, estimation and tracking
     def met(self):
