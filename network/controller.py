@@ -17,7 +17,7 @@ dependence: hub.py and MongoDB
 db-name: smacs
 collection: state, conf 
 
-5/3/2023/nj, laste update 7/13/2023, PoC
+5/3/2023/nj, laste update 7/21/2023, PoC
 '''
 import zmq 
 import time, sys,json, os, pprint, copy
@@ -321,13 +321,9 @@ class Controller:
                 continue
             elif self.state['tseq'][0] == self.state['tseq'][1]:          #accept acknoledgement
                 self.state['seq'] = self.state['tseq'][0]
-                if self.state['crst'] and  not self.conf['uperiod']:
-                        self.state['loop'] = False
-                        print('reset, leaving state:\n', self.state) 
-                else:                                                       #continue to next cnt measurements
-                    self.state['crst'] = False 
-                    self.state['sent'] = False
-                    self.state['mseq'] = 0
+                if self.state['crst']:
+                    self.state['loop'] = False
+                    print('reset, leaving state:\n', self.state) 
 
             if self.state['tmseq'][0] == self.state['tmseq'][1]:
                 self.state['mseq'] = self.state['tmseq'][0]
