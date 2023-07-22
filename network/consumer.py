@@ -267,10 +267,14 @@ class Consumer:
                         self.adopt_met(cdu['met'])
                         self.cst['ctr']['seq'] = cdu['seq']                 #ack
                         self.cst['ctr']['new'] = True 
+                    #----
+                    """
                     if cdu['mode'] != self.conf['mode']:
                         self.conf['mode'] = cdu['mode']
                         self.cst['ctr']['seq'] = cdu['seq']                 #ack
                         self.cst['ctr']['new'] = True 
+                    """
+                    #----
                     #-------------update user-plane
                     if 'urst' in cdu:
                         self.cst['c2p']['urst'] = cdu['urst']

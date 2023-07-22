@@ -272,10 +272,14 @@ class Producer:
                         self.adopt_met(cdu['met'])
                         self.pst['ctr']['seq'] = cdu['seq']                     #ack the receivd from N0
                         self.pst['ctr']['new'] = True                           
+                    #-----
+                    """
                     if cdu['mode'] != self.conf['mode']: 
                         self.conf['mode'] = cdu['mode']
                         self.pst['ctr']['seq'] = cdu['seq']                     #ack the receivd from N0
                         self.pst['ctr']['new'] = True                           
+                    """
+                    #----
                     #update user plane state
                     if 'urst' in cdu:
                         self.pst['p2c']['urst'] = cdu['urst']                   #can be F or T
@@ -351,7 +355,9 @@ class Producer:
     #obain user payload
     def source(self):
         print('----:', self.pubsdu)
-        a = deque(list('this-is-a-test'))
+        #a = deque(list('this-is-a-test'))
+        text = "La donna è mobile.\n Qual piuma al vento,\n  Muta d'accento,\n E di pensiero.\n"
+        a = deque(text.split(' '))
         while True: 
             if len(self.pubsdu) < self.pubsdu.maxlen: 
                 self.seq += 1
