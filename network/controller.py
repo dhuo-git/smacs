@@ -17,7 +17,7 @@ dependence: hub.py and MongoDB
 db-name: smacs
 collection: state, conf 
 
-5/3/2023/nj, laste update 7/21/2023, PoC
+created on 5/3/2023/nj, last update on 7/23/2023, PoC
 '''
 import zmq 
 import time, sys,json, os, pprint, copy
@@ -85,11 +85,13 @@ class Controller:
    #packet for mode 1 and 3 
     def cdu1(self, cseq, mseq):#, met, mode):
         st = {'id': self.id, 'chan': self.conf['ctr_pub'], 'key':self.conf['key'].copy(), 'seq':cseq, 'mseq':mseq, 'ct':[], 'pt':[]}
-        return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met']), 'mode':self.state['mode']}
+        return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met'])}
+        #return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met']), 'mode':self.state['mode']}
 
     def cdu3(self, cseq, mseq):#, met, mode):
         st = {'id': self.id, 'chan': self.conf['ctr_pub'], 'key':self.conf['key'].copy(), 'seq':cseq, 'mseq':mseq, 'ct':[], 'pt':[]}
-        return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met']), 'mode':self.state['mode']}
+        return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met'])}
+        #return {**st,  'crst': self.state['crst'], 'met':copy.deepcopy(self.state['met']), 'mode':self.state['mode']}
 
     def cdu_test(self, seq):
         return {'id': self.id, 'chan': self.conf['ctr_pub'], 'seq': seq, 'time':time.time()}
@@ -332,10 +334,10 @@ class Controller:
                         self.state['crst'] = True
                     cdu = self.cdu3(self.state['seq']+1, self.state['mseq']+1)#, self.state['crst'],self.state['urst'])
 
-                    # for u-plane only
+                    # for u-plane only, the only difference from mode 1
                     if self.conf['uperiod'] and time.time() > utimer:
                         utimer += self.conf['uperiod']
-                        self.state['urst'] = not self.state['urst']
+                        self.state['urst'] = not self.state['urst']         #flip-flop
                         cdu['urst'] = self.state['urst']
                     #u-plane end
 
@@ -482,7 +484,7 @@ C_CONF.update({'ctr_sub': 0, 'ctr_pub': 7, 'u_sub': 4, 'u_pub': 6})
 #from producer import CONF as P_CONF
 #from consumer import CONF as C_CONF
 
-CONF = {"ipv4":ipv4 , "sub_port": "5570", "pub_port": "5568", "id":0, "dly":0, "print": True, "ver": 0,  'cnt':20, "mode":0, "uperiod": 0}
+CONF = {"ipv4":ipv4 , "sub_port": "5570", "pub_port": "5568", "id":0, "dly":0, "print": True, "ver": 0,  'cnt':20, "mode":0, "uperiod": 4}
 CONF.update({"ctr_pub": 0,  "ctr_subp": 5, "ctr_subc":7, "key":[1,2], 'pc_conf':{'p': P_CONF, 'c':C_CONF}})
 
 #ctr_pub: multicast interface

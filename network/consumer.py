@@ -13,7 +13,7 @@ major method:
 TX-message: {'cdu':, 'sdu':} for mode 0,1,3 on N7, 
 RX-message: {'cdu':, 'sdu':} for mode 0,1,3 on N4 or N0
 
-5/2/2023/, laste update 7/3/2023
+created on 5/2/2023/, last update on 7/23/2023
 '''
 import zmq 
 import sys, json, os, time, pprint, copy
@@ -161,18 +161,10 @@ class Consumer:
     def Mode2(self):
         print('mode 2')
         while True: #receive from permissible interfaces [N0, N4]
-           
-            #bstring = self.sub_socket.recv()
-            #slst= bstring.split()
-            #sub_topic=json.loads(slst[0])
             sub_topic, message = self.receive('rx:', False)
             if sub_topic == self.conf['u_sub']:                       #from N4
-                #messagedata =b''.join(slst[1:])
-                #message = json.loads(messagedata) 
-                #print('rx', message)
                 cdu = message['cdu']
                 sdu = message['sdu']
-                #slot 2
                 if cdu['seq'] > self.cst['c2p']['seq']:
                     self.cst['c2p']['seq'] = cdu['seq']
                     self.deliver_sdu(sdu)
@@ -190,70 +182,67 @@ class Consumer:
     #2 slots, each with a SDU on N4, where slot 1 together with pt, slot 2 with local ack
     '''
     def Mode1Rx(self):
-        print('mode 1 for consumer Rx:', self.conf['mode'])
+        print('consumer Rx for mode ', self.conf['mode'])
         while True: #slot 1
             sub_topic, cdu = self.receive('rx:')
             if sub_topic == self.conf['ctr_sub']:                       #from N0 #prepare N6
                 if cdu['ct']:
                     cdu['ct'].append(time.time_ns())
                     if len(cdu['ct']) == 2:
-                        self.cst['c2p']['ct'] = copy.deepcopy(cdu['ct'])
+                        self.cst['c2p']['ct'] = cdu['ct'].copy()        #copy.deepcopy(cdu['ct'])
                         self.cst['c2p']['mseq'] = cdu['mseq']
                         self.cst['c2p']['new'] = True                       #prepare for N7
+                    #else: self.cst['c2p']['ct'].clear()
+                #local
                 if cdu['seq'] > self.cst['ctr']['seq']:                     #prepare for N7
                     if cdu['met']:
                         self.adopt_met(cdu['met'])
                         self.cst['ctr']['seq'] = cdu['seq']                 #ack
                         self.cst['ctr']['new'] = True 
                         self.cst['ctr']['crst'] = cdu['crst']
-                    #print("rx ctr N0 :",cdu)
 
             if sub_topic == self.conf['u_sub']:
                 if cdu['pt']:
                     cdu['pt'].append(time.time_ns())
                     if len(cdu['pt']) == 4:
-                        self.cst['ctr']['pt'] = copy.deepcopy(cdu['pt'])
+                        self.cst['ctr']['pt'] =cdu['pt'].copy()         # copy.deepcopy(cdu['pt'])
                         self.cst['ctr']['mseq'] = cdu['mseq']
                         self.cst['ctr']['new'] = True
+                    #else: self.cst['ctr']['pt'].clear()
+                #local
                 if cdu['seq'] > self.cst['c2p']['seq']:
                     self.cst['c2p']['seq'] = cdu['seq']
                     self.cst['c2p']['new'] = True 
-                #print("rx c2p N4:",cdu)
+
             time.sleep(self.conf['dly'])
 
     def Mode1Tx(self): #slot 2, 
-        print('mode 1 for consumer Tx:', self.conf['mode'])
+        print('consumer Tx for mode ', self.conf['mode'])
         while True:
-
-            if self.cst['c2p']['new']:  #transmit or not
+            if self.cst['c2p']['new']:  #response on N6
                 self.cst['c2p']['new'] = False
                 if len(self.cst['c2p']['ct']) == 2:
                     rcdu = self.c2p_cdu13(self.cst['c2p']['seq'], self.cst['c2p']['mseq'], self.cst['c2p']['ct'])
                     rcdu['ct'].append(time.time_ns())
                     self.transmit(rcdu, 'tx c2p N6:')
-                else:
-                    self.cst['c2p']['ct'].clear()
+                #else: self.cst['c2p']['ct'].clear()
                 
             if self.cst['ctr']['new']: #prepare for N7, 
                 self.cst['ctr']['new'] = False
                 if len(self.cst['ctr']['pt']) == 4:
                     rcdu = self.ctr_cdu13(self.cst['ctr']['seq'], self.cst['ctr']['mseq'], self.cst['ctr']['pt'])
                     rcdu['pt'].append(time.time_ns())
-
                     self.transmit(rcdu, 'tx ctr N7:')
                     if self.cst['ctr']['crst']:
                         self.cst['ctr']['seq'] = 0
-                        print('consumer reset and wait ...', self.cst['ctr'])
-                else: 
-                    self.cst['ctr']['pt'].clear()
-
+                        print('consumer is reset and waits ...')#, self.cst['ctr'])
+                #else: self.cst['ctr']['pt'].clear()
     #-
     def Mode3Rx(self):
-        print('mode 3 for consumer Rx', self.conf['mode'])
+        print('consumer Rx for mode ', self.conf['mode'])
         while True: 
             sub_topic, message = self.receive('rx:', False) 
             cdu = message['cdu']
-            print('rx:', sub_topic, message)
             if sub_topic == self.conf['ctr_sub']:                       #from N0 #prepare N6 
                 if cdu['ct']:
                     cdu['ct'].append(time.time_ns())
@@ -261,25 +250,20 @@ class Consumer:
                         self.cst['c2p']['ct'] = cdu['ct'].copy()
                         self.cst['c2p']['mseq'] = cdu['mseq']
                         self.cst['c2p']['new'] = True                       #prepare for N7
+                    #else: self.cst['c2p']['ct'].clear()
                 #local
                 if cdu['seq'] > self.cst['ctr']['seq']:                     #prepare for N7
                     if cdu['met']:
                         self.adopt_met(cdu['met'])
                         self.cst['ctr']['seq'] = cdu['seq']                 #ack
                         self.cst['ctr']['new'] = True 
-                    #----
-                    """
-                    if cdu['mode'] != self.conf['mode']:
-                        self.conf['mode'] = cdu['mode']
-                        self.cst['ctr']['seq'] = cdu['seq']                 #ack
-                        self.cst['ctr']['new'] = True 
-                    """
-                    #----
+                        self.cst['ctr']['crst'] = cdu['crst']
                     #-------------update user-plane
                     if 'urst' in cdu:
                         self.cst['c2p']['urst'] = cdu['urst']
                         self.cst['c2p']['update'] = True
                     #-------------updated
+
             if sub_topic == self.conf['u_sub']:                         #from N4
                 if cdu['pt']:
                     cdu['pt'].append(time.time_ns())
@@ -287,6 +271,7 @@ class Consumer:
                         self.cst['ctr']['pt'] = cdu['pt'].copy()
                         self.cst['ctr']['mseq'] = cdu['mseq']
                         self.cst['ctr']['new'] = True
+                    #else: self.cst['ctr']['pt'].clear()
                 #local
                 if cdu['seq'] > self.cst['c2p']['seq']:
                     self.cst['c2p']['seq'] = cdu['seq']
@@ -296,33 +281,38 @@ class Consumer:
             time.sleep(self.conf['dly'])
 
     def Mode3Tx(self): #slot 2, 
-        print('mode 3 for consumer Tx', self.conf['mode'])
+        print('consumer Tx for mode ', self.conf['mode'])
         while True:
-            if self.cst['ctr']['new']: #prepare for N7, mseq is updated by slot 1 #if self.cst['c2p']['mseq'] == self.cst['ctr']['mseq']:
-                self.cst['ctr']['new'] = False
-                rcdu = self.ctr_cdu13(self.cst['ctr']['seq'], self.cst['ctr']['mseq'], self.cst['ctr']['pt'])
-                if len(rcdu['pt']) == 4:
-                    rcdu['pt'].append(time.time_ns())
-                    self.transmit(rcdu, 'tx ctr N7:')
-
-            if self.cst['c2p']['new']:  #transmit or not
+            if self.cst['c2p']['new']:  #response on N6
                 self.cst['c2p']['new'] = False
-                rcdu = self.c2p_cdu13(self.cst['c2p']['seq'], self.cst['c2p']['mseq'], self.cst['c2p']['ct'])
-                if len(rcdu['ct'])== 2:
+                if len(self.cst['c2p']['ct'])== 2:
+                    rcdu = self.c2p_cdu13(self.cst['c2p']['seq'], self.cst['c2p']['mseq'], self.cst['c2p']['ct'])
                     rcdu['ct'].append(time.time_ns())
-                else:
-                    rcdu['ct'].clear()
+                else: 
+                    self.cst['c2p']['ct'].clear()
+                    rcdu = self.c2p_cdu13(self.cst['c2p']['seq'], self.cst['c2p']['mseq'], self.cst['c2p']['ct'])
                 self.transmit(rcdu, 'tx c2p N6:')
+
                 #----------- refresh user-plane
                 if self.cst['c2p']['update']:
+                    self.cst['c2p']['update'] = False
                     if self.cst['c2p']['urst']:
-                        self.conf['mode'] = 1
+                        self.conf['mode'] = 1       #to stop sink
                         self.cst['c2p']['seq'] = 0
-                        self.cst['c2p']['update'] = False
                     else:
-                        self.conf['mode'] = 3
-                        self.cst['c2p']['update'] = False
+                        self.conf['mode'] = 3       #to restart sink
                 #----------- refreshed
+
+            if self.cst['ctr']['new']: #prepare for N7, 
+                self.cst['ctr']['new'] = False
+                if len(self.cst['ctr']['pt']) == 4:
+                    rcdu = self.ctr_cdu13(self.cst['ctr']['seq'], self.cst['ctr']['mseq'], self.cst['ctr']['pt'])
+                    rcdu['pt'].append(time.time_ns())
+                    self.transmit(rcdu, 'tx ctr N7:')
+                    if self.cst['ctr']['crst']:
+                        self.cst['ctr']['seq'] = 0
+                        print('consumer stopped measurement and waits ...')
+                #else: self.cst['ctr']['pt'].clear()
     #----------------Cons-TX-RX ------------------
     def adopt_met(self, met):                       #for the time being, clear memory
         if isinstance(met,dict):
