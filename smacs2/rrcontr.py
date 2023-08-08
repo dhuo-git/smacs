@@ -485,19 +485,21 @@ P/C-CONF:
 #ipv4= "192.168.1.204"               #system76 #ipv4= "192.168.1.99"               #lenovo P21 #ipv4= "192.168.1.37"
 #ipv4= "192.168.1.204"   #system76
 #ipv4= "192.168.1.99"    #lenovo P15
-ipv4p="192.168.1.37"    #lenovo T450
+ipv4="192.168.1.37"    #lenovo T450
+#ipv4="127.0.0.1"    #local
+#ipv4 = "0.0.0.0"
 
 #ips = ["127.0.0.1", "127.0.0.1"]    #c-plane addresses
 ips = ["192.168.1.37", "192.168.1.37"]    #c-plane addresses
 ports = [5555, 6666]                #c-plane ports
 
-hub_ip = "127.0.0.1"                #u-plane address
+hub_ip = ipv4 #"127.0.0.1"                #u-plane address
 sub_port = 5570                     #u-plane ports
 pub_port = 5568
 
-CONF = {"ips":ips, "ports": ports, "id":0,  "key":[1,2], "dly":0, "ver": 0, 'maxlen':4,  'cnt':12, "mode":0, "uperiod": 0}
-P_CONF = {'hub_ip':hub_ip, 'sub': (sub_port, 6), 'pub': (pub_port,4), 'key':[1, 2], 'ctraddr':(CONF['ips'][0], CONF['ports'][0]), 'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
-C_CONF = {'hub_ip':hub_ip, 'sub': (sub_port, 4), 'pub': (pub_port,6), 'key':[1, 2], 'ctraddr':(CONF['ips'][1], CONF['ports'][1]), 'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
+CONF = {"ips":ips, "ports": ports, "id":0,  "key":[1,2], "dly":1, "ver": 0, 'maxlen':4,  'cnt':12, "mode":0, "uperiod": 0}
+P_CONF = {'hub_ip':hub_ip, 'sub': (sub_port, 6), 'pub': (pub_port,4), 'key':[1, 2], 'ctraddr':(ips[0], ports[0]),'psrc_port': ports[0]+2,'esrc': False,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
+C_CONF = {'hub_ip':hub_ip, 'sub': (sub_port, 4), 'pub': (pub_port,6), 'key':[1, 2], 'ctraddr':(ips[1], ports[1]),'csrc_port': ports[1]+2,'esnk': False,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
 CONF['conf'] = {'p': P_CONF, 'c':C_CONF}
 
 if __name__ == "__main__":

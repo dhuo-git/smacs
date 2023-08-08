@@ -148,6 +148,8 @@ class SlaveCons(Slave, Cons):
                 rcdu = self.c2p_cdu13(self.cst['c2p']['seq'], self.cst['c2p']['mseq'], self.cst['c2p']['ct'].copy(), self.cst['c2p']['proto'])
                 self.transmit(rcdu, 'Cons, tx c2p on N6:')
 
+            time.sleep(self.conf['dly'])
+
             if self.ctr:                               #N7 tx: Step 4, using self.ctr
                 self.cst['ctr']['mseq'], self.cst['ctr']['pt'], self.cst['ctr']['proto'] = self.ctr.popleft() 
                 rcdu = self.ctr_cdu13(self.cst['ctr']['seq'], self.cst['ctr']['mseq'], self.cst['ctr']['pt'], self.cst['ctr']['proto'])

@@ -28,13 +28,15 @@ class PubFwdSub:
         self.sub_active = True
         self.pub_active = True
 
+        print(self.conf)
     def subscriber(self, sub_id): 
         print('client {} subsribes from port {} on topics {}'.format(sub_id, self.conf['sub_port'], self.conf['subtopics'][sub_id])) 
         socket = self.context.socket(zmq.SUB)
         #socket.connect (dish, "udp://{0}:{1}".format(self.conf['ipv4'], self.conf['sub_port']))
         socket.connect ("tcp://{0}:{1}".format(self.conf['ipv4'], self.conf['sub_port']))
         socket.setsockopt(zmq.SUBSCRIBE, b'')
-        socket.setsockopt(zmq.SNDHWM, 2)
+        #socket.setsockopt(zmq.SNDHWM, 2)
+        socket.setsockopt(zmq.SNDHWM, 12)
         for i in self.conf['subtopics'][sub_id]:
             topicfilter = str(i) 
             socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
@@ -73,7 +75,7 @@ class PubFwdSub:
 
     #publsiher payload: back end facing server #generate publications 
     def pub_handler(self, publisher_id, topic):
-        tx = {'id': publisher_id,'top': topic, 'tm': time.perf_counter()}
+        tx = {'id': publisher_id,'top': topic, 'tm': time.perf_counter(), 'ip': self.conf['ipv4']}
         print('Server {} sends for topic {}:'.format(publisher_id, topic), tx)
         return tx
 
@@ -154,13 +156,15 @@ class PubFwdSub:
 #pub=ord(os.urandom(1))%2 #only 2 options, see CONF nm =os.urandom(2)
 #P2F2S_CONF = {'ipv4': '127.0.0.1', 'pub_port': "5568", 'sub_port': "5570", 'pubtopics':[[0,1,2,3,4],[10,11,12,13]], 'subtopics':[[0,1,4], [10,13]], 'dly':2.}
 
-ipv4 = '0.0.0.0' #any ip on the current container or host
-#ipv4 = "192.168.1.37"
+#ipv4 = '0.0.0.0' #any ip on the current container or host
+ipv4 = "192.168.1.37"
 #ipv4 = "192.168.1.204"          #system76
-AUTOGET = False 
+#ipv4 = '192.168.1.99' #any ip on the current container or host
+AUTOGET = False #AUTOGET = True 
 if AUTOGET: #takes ip of the current container or host
     import socket
     ipv4 = socket.gethostbyname(socket.gethostname())
+print('host ip address')
 
 P2F2S_CONF = {'ipv4': ipv4, 'pub_port': "5568", 'sub_port': "5570", 'pubtopics':[[0,1,2,3,4],[10,11,12,13]], 'subtopics':[[0,1,4], [10,13]], 'dly':2.}
 P2F2S_CONF = {'ipv4': ipv4, 'pub_port': "5568", 'sub_port': "5570", 'pubtopics':[[0,1,2,3,4],[10,11,12,13]], 'subtopics':[[0,1,4], [10,13]], 'dly':0., 'verbose': False}
@@ -185,4 +189,4 @@ if __name__ == "__main__":
         inst=PubFwdSub(conf)
         inst.pub_and_sub(pub,sub)
     else:
-        print('python ring.py -fwd/-pub/-sub/pubsub')
+        print('python hub.py -fwd/-pub/-sub/pubsub')

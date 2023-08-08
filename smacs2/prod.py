@@ -55,11 +55,27 @@ class Prod:
         self.p2c = deque(maxlen=self.conf['maxlen'])
         self.ctr = deque(maxlen=self.conf['maxlen'])
 
+        self.srcsvr_socket = self.context.socket(zmq.PAIR)
+        self.srcsvr_socket.setsockopt(zmq.RCVHWM,1)
+        self.srcsvr_socket.setsockopt(zmq.LINGER,1)
+        self.srcsvr_socket.bind("ipc:///tmp/zmqtestp")
+        #self.srcsvr_socket.bind("tcp://localhost:{}"/format(self.conf['psrc_port']))
+
+        self.srcclt_socket = self.context.socket(zmq.PAIR)
+        self.srcclt_socket.setsockopt(zmq.SNDHWM,1)
+        self.srcclt_socket.setsockopt(zmq.LINGER,1)
+        self.srcclt_socket.connect("ipc:///tmp/zmqtestp")
+        #self.srcclt_socket.connect("tcp://localhost:{}"/format(self.conf['psrc_port']))
+
+
     def close(self):
         self.pst.clear()
 
         self.sub_socket.close()
         self.pub_socket.close()
+
+        self.srcsvr_socket.close()
+        self.srcclt_socket.close()
         self.context.term()
         print('sockets closed and context terminated')
     #--------------------------------------
@@ -122,7 +138,7 @@ class Prod:
 
             self.transmit(rcdu, 'tx p2c on N4:', self.get_sdu())        #N4 tx
 
-            time.sleep(self.conf['dly'])
+            #time.sleep(self.conf['dly'])
 
             sub_topic, cdu = self.receive('rx c2p on N6:')              #N6 rx
 
@@ -148,26 +164,39 @@ class Prod:
                 exit()
 
     #--------------------------------Prod-TX-RX------------------------
-    def get_sdu(self): 
-        if self.pubsdu and self.conf['mode'] in [2,3]: 
-            return self.pubsdu.popleft() #{'seq':self.seq, 'pld': self.pubsdu.popleft()}
+    def get_sdu(self, extern=False): 
+        if extern:
+            tx = self.srcsvr_socket.recv_json()
+            print('sent:', tx)
+            return tx
         else:
-            return dict()
+            if self.pubsdu and self.conf['mode'] in [2,3]: 
+                return self.pubsdu.popleft() #{'seq':self.seq, 'pld': self.pubsdu.popleft()}
+            else:
+                return dict()
     #----------------------User application interface ---------------
     #obain user payload
     def source(self):
-        print('----:', self.pubsdu)
-        a = deque(list('this-is-a-test'))
-        while True: 
-            if len(self.pubsdu) < self.pubsdu.maxlen: 
-                self.seq += 1
-                sdu = {'seq': self.seq, 'pld': a[0]} 
-                print('prepared sdu:', sdu)
-                self.pubsdu.append(sdu)
-                a.rotate(-1)
-            else:
-                time.sleep(self.conf['dly'])
-                print('source buffer full')
+        
+        if self.conf['esrc']:
+            while True:
+                self.srcclt_socket.send_json({'seq': self.seq})
+                self.seq+=1
+
+        else:
+            print('----:', self.pubsdu)
+            a = deque(list('this-is-a-test'))
+            while True: 
+                if len(self.pubsdu) < self.pubsdu.maxlen: 
+                    self.seq += 1
+                    sdu = {'seq': self.seq, 'pld': a[0]} 
+                    print('prepared sdu:', sdu)
+                    self.pubsdu.append(sdu)
+                    a.rotate(-1)
+                else:
+                    time.sleep(self.conf['dly'])
+                    print('source buffer full')
+    
 #------------------ TEST Producer  -------------------------------------------
 from rrcontr import P_CONF as CONF 
 if __name__ == "__main__":

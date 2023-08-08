@@ -183,6 +183,8 @@ class SlaveProd(Slave, Prod):
                 self.pst['p2c']['seq'] = 0
             else: self.conf['mode'] = 3       #turn source on
             #----------- refreshed
+            time.sleep(self.conf['dly'])
+
             if self.ctr:                               #N5 tx
                 self.pst['ctr']['mseq'], self.pst['ctr']['ct'], self.pst['ctr']['proto'] = self.ctr.popleft()
                 rcdu = self.ctr_cdu13(self.pst['ctr']['seq'], self.pst['ctr']['mseq'], self.pst['ctr']['ct'], self.pst['ctr']['proto'])

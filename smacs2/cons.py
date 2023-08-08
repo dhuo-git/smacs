@@ -52,12 +52,27 @@ class Cons:
         self.c2p = deque(maxlen=self.conf['maxlen'])
         self.ctr = deque(maxlen=self.conf['maxlen'])
 
+        self.snksvr_socket = self.context.socket(zmq.PAIR)
+        self.snksvr_socket.setsockopt(zmq.RCVHWM,1)
+        self.snksvr_socket.setsockopt(zmq.LINGER,1)
+        self.snksvr_socket.bind("ipc:///tmp/zmqtestc")
+        #self.snksvr_socket.bind("tcp://localhost:{}".format(self.conf['csrc_port']))
+
+        self.snkclt_socket = self.context.socket(zmq.PAIR)
+        self.snkclt_socket.setsockopt(zmq.SNDHWM,1)
+        self.snkclt_socket.setsockopt(zmq.LINGER,1)
+        self.snkclt_socket.connect("ipc:///tmp/zmqtestc")
+        #self.snkclt_socket.connect("tcp://localhost:{}".format(self.conf['csrc_port']))
 
     def close(self):
         self.cst.clear()
 
         self.sub_socket.close()
         self.pub_socket.close()
+
+        self.snksvr_socket.close()
+        self.snkclt_socket.close()
+
         self.context.term()
         print('sockets closed and context terminated')
 
@@ -99,7 +114,6 @@ class Cons:
             print(note, message['cdu'])
             return sub_topic, message['cdu']
         else:       #c+u-plane
-            #message['cdu'] = cdu.copy()#cdu= message['cdu']
             print(note,  message)
             return sub_topic, message
     """ """
@@ -107,7 +121,6 @@ class Cons:
         while True: 
             sub_topic, message = self.receive('rx p2c-N4:', False) 
             cdu = message['cdu']
-            #print('rx:', sub_topic, cdu)
             if sub_topic == self.conf['sub'][1] and cdu:            #from N4
                 if cdu['seq'] > self.cst['c2p']['seq']:
                     self.cst['c2p']['seq'] = cdu['seq'] 
@@ -138,7 +151,7 @@ class Cons:
 
                 self.transmit(rcdu, 'tx c2p N6:')
 
-                time.sleep(self.conf['dly'])
+                #time.sleep(self.conf['dly'])
             """ """
     def c_server(self):
         print('mode :', self.conf['mode'])
@@ -156,18 +169,27 @@ class Cons:
 
     #----------------Cons-TX-RX ------------------
     def deliver_sdu(self, sdu):
-        if self.conf['mode'] in [2,3] and len(self.subsdu) < self.subsdu.maxlen:
-           self.subsdu.append(sdu)
+        if self.conf['esnk']:
+            self.snkclt_socket.send_json(sdu)
+            print('received:', sdu)
         else:
-            print('sdu receive buffer full or disabled')
+            if self.conf['mode'] in [2,3] and len(self.subsdu) < self.subsdu.maxlen:
+               self.subsdu.append(sdu)
+            else:
+                print('sdu receive buffer full or disabled')
     #------------------ User application  interface -------
     #deliver user payload 
-    def sink(self):
-        print('---- :', self.subsdu)
-        while True:
-            if self.subsdu:
-                data = self.subsdu.popleft()
-                print('delivered sdu', data)
+    def sink(self, extern = False):
+        if extern:
+            while True:
+                rx = self.snksvr_socket.recv_json()
+                print('received:', rx)
+        else:
+            print('---- :', self.subsdu)
+            while True:
+                if self.subsdu:
+                    data = self.subsdu.popleft()
+                    print('delivered sdu', data)
 
 # --------------TEST Consumer ---------------------------------------------
 #from contrtest import C_CONF as CONF 
