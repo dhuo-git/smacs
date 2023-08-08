@@ -14,7 +14,7 @@ RX-message: {'cdu':, 'sdu':} on N4
 
 dependence: hub.py -fwd
 
-5/2/2023/, laste update 7/14/2023
+5/2/2023/, laste update 8/8/2023
 '''
 import zmq 
 import sys, json, os, time, pprint, copy
@@ -55,13 +55,17 @@ class Cons:
         self.snksvr_socket = self.context.socket(zmq.PAIR)
         self.snksvr_socket.setsockopt(zmq.RCVHWM,1)
         self.snksvr_socket.setsockopt(zmq.LINGER,1)
-        self.snksvr_socket.bind("ipc:///tmp/zmqtestc")
+        self.snksvr_socket.bind("ipc://tmp/zmqtestc")
+
+        #self.snksvr_socket.bind("ipc:///tmp/zmqtestc")
         #self.snksvr_socket.bind("tcp://localhost:{}".format(self.conf['csrc_port']))
 
         self.snkclt_socket = self.context.socket(zmq.PAIR)
         self.snkclt_socket.setsockopt(zmq.SNDHWM,1)
         self.snkclt_socket.setsockopt(zmq.LINGER,1)
-        self.snkclt_socket.connect("ipc:///tmp/zmqtestc")
+        self.snkclt_socket.connect("ipc://tmp/zmqtestc")
+
+        #self.snkclt_socket.connect("ipc:///tmp/zmqtestc")
         #self.snkclt_socket.connect("tcp://localhost:{}".format(self.conf['csrc_port']))
 
     def close(self):
@@ -163,7 +167,9 @@ class Cons:
             case 3:
                 thr=[Thread(target = self.sink), Thread(target=self.cmode3)]
                 for t in thr: t.start()
-                for t in thr: t.join()
+                for t in thr: t.join() 
+            case 5: 
+                self.cmode3()	
             case _:
                 print('only mode 2 is possible')
 
@@ -179,8 +185,8 @@ class Cons:
                 print('sdu receive buffer full or disabled')
     #------------------ User application  interface -------
     #deliver user payload 
-    def sink(self, extern = False):
-        if extern:
+    def sink(self):
+        if self.conf['esnk']:
             while True:
                 rx = self.snksvr_socket.recv_json()
                 print('received:', rx)

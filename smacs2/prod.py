@@ -14,7 +14,7 @@ RX-message: {'cdu':, 'sdu':} on N6
                 
 dpendence: hub.py -fwd
 
-5/3/2023/nj, laste update 7/14/2023
+5/3/2023/nj, laste update 8/8/2023
 '''
 import zmq 
 import time, sys,json, os, random, pprint, copy
@@ -58,13 +58,17 @@ class Prod:
         self.srcsvr_socket = self.context.socket(zmq.PAIR)
         self.srcsvr_socket.setsockopt(zmq.RCVHWM,1)
         self.srcsvr_socket.setsockopt(zmq.LINGER,1)
-        self.srcsvr_socket.bind("ipc:///tmp/zmqtestp")
+        self.srcsvr_socket.bind("ipc://tmp/zmqtestp")
+
+        #self.srcsvr_socket.bind("ipc:///tmp/zmqtestp")
         #self.srcsvr_socket.bind("tcp://localhost:{}"/format(self.conf['psrc_port']))
 
         self.srcclt_socket = self.context.socket(zmq.PAIR)
         self.srcclt_socket.setsockopt(zmq.SNDHWM,1)
         self.srcclt_socket.setsockopt(zmq.LINGER,1)
-        self.srcclt_socket.connect("ipc:///tmp/zmqtestp")
+        self.srcclt_socket.connect("ipc://tmp/zmqtestp")
+
+        #self.srcclt_socket.connect("ipc:///tmp/zmqtestp")
         #self.srcclt_socket.connect("tcp://localhost:{}"/format(self.conf['psrc_port']))
 
 
@@ -159,13 +163,15 @@ class Prod:
                 thr =[Thread(target=self.source), Thread(target=self.pmode3)]
                 for t in thr: t.start()
                 for t in thr: t.join()
+            case 5:
+                self.pmode3() #source external, requires 'esrc'=True, with port+2
             case _: 
                 print('unknown mode in prod.py', self.conf['mode'])
                 exit()
 
     #--------------------------------Prod-TX-RX------------------------
-    def get_sdu(self, extern=False): 
-        if extern:
+    def get_sdu(self):
+        if self.conf['esrc']:
             tx = self.srcsvr_socket.recv_json()
             print('sent:', tx)
             return tx
