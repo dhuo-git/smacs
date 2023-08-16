@@ -13,6 +13,7 @@ created 7/18/2023 , last update 8/15/2023
 import zmq, sys, time, json, random, copy
 from threading import Thread
 from Rcons import Cons
+from rabbitRpc import close as rclose
 #import pdb #breakpoint()
 
 class Slave:
@@ -53,22 +54,7 @@ class Slave:
 
             self.socket.send_json(response) 
         self.close()
-
-    def half_duplex_server(self):
-        while self.loop:
-            if self.seq%2 == 0:             #receive slot
-                request = self.socket.recv_json()
-                if request['proto']:        #received multicast
-                    request['t'].append(time.time_ns())
-                print('Slave.server received:', request)
-                response =  self.consume(request)   #send to N6
-            else:                           #transmit slot
-                #if not response: continue
-                if response['proto']: 
-                    response['pt'].append(time.time_ns())
-                self.socket.send_json(response) 
-            self.seq += 1
-        self.close()
+    """ """
     #handler to be overriden by child class
     def consume(self, rx:dict)-> dict: 
         print('Slave.server received:', rx)
@@ -180,24 +166,28 @@ class SlaveCons(Slave, Cons):
 def rcons(Conf:dict)-> None:
     s= SlaveCons(Conf)
     print('mode', Conf['mode'])
-    match Conf['mode']:
-        case 0:
-            s.server()
-        case 1:
-            thr= [Thread(target=s.server), Thread(target=s.call)]
-            for t in thr: t.start()
-            for t in thr: t.join()
-        case 2:
-            thr= [Thread(target=s.call), Thread(target=s.sink)]
-            for t in thr: t.start()
-            for t in thr: t.join()
-        case 3:
-            thr= [Thread(target=s.server), Thread(target=s.call), Thread(target=s.sink)]
-            for t in thr: t.start()
-            for t in thr: t.join()
-        case _:
-            print('unknown mode in rcons(Conf)')
-            exit()
+    try:
+        match Conf['mode']:
+            case 0:
+                s.server()
+            case 1:
+                thr= [Thread(target=s.server), Thread(target=s.call)]
+                for t in thr: t.start()
+                for t in thr: t.join()
+            case 2:
+                thr= [Thread(target=s.call), Thread(target=s.sink)]
+                for t in thr: t.start()
+                for t in thr: t.join()
+            case 3:
+                thr= [Thread(target=s.server), Thread(target=s.call), Thread(target=s.sink)]
+                for t in thr: t.start()
+                for t in thr: t.join()
+            case _:
+                print('unknown mode in rcons(Conf)')
+                exit()
+    except KeyboardInterrupt:
+        print('Interrupted')
+        rclose()
 """ ----TEST-----"""
 from rrRcontr import set_mode, CONF
 if __name__ == '__main__':

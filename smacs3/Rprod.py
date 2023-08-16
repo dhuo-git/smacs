@@ -44,16 +44,17 @@ class Prod(RpcClient):
         #pprint.pprint(self.pst)
         self.p2c = deque(maxlen=self.conf['maxlen'])
         self.ctr = deque(maxlen=self.conf['maxlen'])
-
+        
+        #generator receiver from source
         self.srcsvr_socket = self.context.socket(zmq.PAIR)
-        self.srcsvr_socket.setsockopt(zmq.RCVHWM,1)
-        self.srcsvr_socket.setsockopt(zmq.LINGER,1)
+        #self.srcsvr_socket.setsockopt(zmq.RCVHWM,1)
+        #self.srcsvr_socket.setsockopt(zmq.LINGER,1)
         self.srcsvr_socket.bind("ipc://tmp/zmqtestp")
 
-        self.srcclt_socket = self.context.socket(zmq.PAIR)
-        self.srcclt_socket.setsockopt(zmq.SNDHWM,1)
-        self.srcclt_socket.setsockopt(zmq.LINGER,1)
-        self.srcclt_socket.connect("ipc://tmp/zmqtestp")
+        #self.srcclt_socket = self.context.socket(zmq.PAIR)
+        #self.srcclt_socket.setsockopt(zmq.SNDHWM,1)
+        #self.srcclt_socket.setsockopt(zmq.LINGER,1)
+        #self.srcclt_socket.connect("ipc://tmp/zmqtestp") #source temporary file location fixed
 
 
     def close(self):
@@ -119,6 +120,7 @@ class Prod(RpcClient):
                 if len(cdu['ct']) == 4: 
                     self.ctr.append([cdu['mseq'], cdu['ct'].copy(), cdu['proto']])
             time.sleep(self.conf['dly'])
+
     """p_client is only valid in this module, not in children  """
     def p_client(self):
         print('mode: ', self.conf['mode'])
@@ -138,37 +140,30 @@ class Prod(RpcClient):
 
     #--------------------------------Prod-TX-RX------------------------
     def get_sdu(self):
-        if self.conf['mode'] in [2,3]:
-            if self.conf['esrc']:
-                tx = self.srcsvr_socket.recv_json()
-                print('source sent:', tx)
-            elif self.pubsdu:
-                tx = self.pubsdu.popleft() 
-                print('source sent:', tx)
-            else:
-                tx = dict()
+        if self.conf['mode'] in [2,3] and  self.pubsdu:
+            sdu = self.pubsdu.popleft() 
         else:
-            tx = dict()
-        return tx
+            sdu = dict()
+        print('Prod.source send SDU:', sdu)
+        return sdu
     #----------------------User application interface ---------------
     #obain user payload
     def source(self):
-        #a = deque(list('this-is-a-test'))
+        print('Prod.source buffer ---- :', self.pubsdu) #a = deque(list('this-is-a-test'))
         lyric=[" La donna è mobile", "Qual piuma al vento", "Muta d'accento", "E di pensiero.", "Sempre un a mabile", "Leggiadro viso", "In pianto o in riso", "è mensognero."]
         a = deque(lyric)
         while True: 
-            if self.conf['esrc']:
-                self.srcclt_socket.send_json({'src':'external', 'seq': self.seq, 'pld':a[0]})
-                print('prepared sdu:', sdu)
-                self.seq+=1
-            elif len(self.pubsdu) < self.pubsdu.maxlen: 
-                sdu = {'src': 'internal', 'seq': self.seq, 'pld': a[0]} 
-                print('prepared sdu:', sdu)
+            if len(self.pubsdu) < self.pubsdu.maxlen: 
+                if self.conf['esrc']:
+                    sdu  = self.srcsvr_socket.recv_json()
+                else:
+                    sdu = {'seq': self.seq, 'pld': a[0]}    
+                    self.seq += 1
+                    a.rotate(-1)
                 self.pubsdu.append(sdu)
-                self.seq += 1
-                a.rotate(-1)
+                print('Prod.source generated:', sdu)
             else:
-                print('source buffer full or desdabled')
+                print('Prod.source send buffer full')
                 time.sleep(self.conf['dly'])
     
 #------------------ TEST Producer  -------------------------------------------

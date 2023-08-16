@@ -43,15 +43,15 @@ class Cons(RpcServer):
         self.c2p = deque(maxlen=self.conf['maxlen'])
         self.ctr = deque(maxlen=self.conf['maxlen'])
 
-        self.snksvr_socket = self.context.socket(zmq.PAIR)
-        self.snksvr_socket.setsockopt(zmq.RCVHWM,1)
-        self.snksvr_socket.setsockopt(zmq.LINGER,1)
-        self.snksvr_socket.bind("ipc://tmp/zmqtestc")
+        #self.snksvr_socket = self.context.socket(zmq.PAIR)
+        #self.snksvr_socket.setsockopt(zmq.RCVHWM,1)
+        #self.snksvr_socket.setsockopt(zmq.LINGER,1)
+        #self.snksvr_socket.bind("ipc://tmp/zmqtestc")
 
-
+        #deliverer:
         self.snkclt_socket = self.context.socket(zmq.PAIR)
-        self.snkclt_socket.setsockopt(zmq.SNDHWM,1)
-        self.snkclt_socket.setsockopt(zmq.LINGER,1)
+        #self.snkclt_socket.setsockopt(zmq.SNDHWM,1)
+        #self.snkclt_socket.setsockopt(zmq.LINGER,1)
         self.snkclt_socket.connect("ipc://tmp/zmqtestc")
 
 
@@ -138,33 +138,23 @@ class Cons(RpcServer):
 
     #----------------Cons-TX-RX ------------------
     def deliver_sdu(self, sdu):
-        if self.conf['mode'] in [2,3]:
-            if self.conf['esnk']:
-                self.snkclt_socket.send_json(sdu)
-                print('cons delivered:', sdu)
-            elif len(self.subsdu) < self.subsdu.maxlen:
-                self.subsdu.append(sdu)
-                print('cons delivered:', sdu)
-            else:
-                print('sdu receive buffer full or disabled')
+        if self.conf['mode'] in [2,3] and  len(self.subsdu) < self.subsdu.maxlen:
+            self.subsdu.append(sdu)
+            print('Cons.sind received SDU: ', sdu)
+        else:
+            print('Cons.sink receive buffer full or disabled for this mode')
     #------------------ User application  interface -------
     #deliver user payload 
     def sink(self):
-        if self.conf['esnk']:
-            while True:
-                rx = self.snksvr_socket.recv_json()
-                print('sink received:', rx)
-        else:
-            print('---- :', self.subsdu)
-            while True:
-                try: #if self.subsdu:
-                    data = self.subsdu.popleft()
-                except IndexError:
-                    #print('sink buffer empty')
-                    data = dict()
-                finally:
-                    #print('sink received:', data)
-                    pass
+        print('Rcons.sink buffer ---- :', self.subsdu)
+        while True:
+            if self.subsdu:
+                sdu = self.subsdu.popleft()
+                if sdu:
+                    if self.conf['esnk']:
+                        self.snkclt_socket.send_json(sdu)
+                    else:
+                        print('Cons.sink delivered:', sdu)
 
 
 # --------------TEST Consumer ---------------------------------------------

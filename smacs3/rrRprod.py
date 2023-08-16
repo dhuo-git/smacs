@@ -14,6 +14,7 @@ created 7/20/2023,  last update 8/15/2023
 import zmq, sys, time, json, random, copy
 from threading import Thread
 from Rprod import Prod 
+from rabbitRpc import close as rclose
 
 class Slave:
     """ Server: received, handle received and respond
@@ -49,22 +50,7 @@ class Slave:
                 response['ct'].append(time.time_ns())
             self.socket.send_json(response)
         self.close()
-
-    def half_duplex_server(self):
-        while self.loop:
-            if self.seq%2 == 0:         #receive slot
-                request = self.socket.recv_json()
-                if request['proto']:
-                    request['t'].append(time.time_ns())
-                print('Slave.server received:', request)
-                response =  self.produce(request)   #send to N4
-            else:
-                #if not response: continue
-                if response['proto']:
-                    response['ct'].append(time.time_ns())
-                self.socket.send_json(response)
-            self.seq += 1
-        self.close()
+    """ """
     #handler to be overidden by child class
     def produce(self, rx:dict)-> dict: 
         print('Slave.server received:', rx)
@@ -186,24 +172,28 @@ class SlaveProd(Slave, Prod):
 def rprod(Conf:dict)-> None:
     s= SlaveProd(Conf)
     print('mode', Conf['mode'])
-    match Conf['mode']:
-        case 0:
-            s.server()
-        case 1:
-            thr= [Thread(target=s.server), Thread(target=s.pmode3)]
-            for t in thr: t.start()
-            for t in thr: t.join()
-        case 2:
-            thr= [Thread(target=s.pmode2), Thread(target=s.source)]
-            for t in thr: t.start()
-            for t in thr: t.join()
-        case 3:
-            thr= [Thread(target=s.server), Thread(target=s.pmode3), Thread(target=s.source)]
-            for t in thr: t.start()
-            for t in thr: t.join()
-        case _:
-            print('unknown mode in rprod(Conf)')
-            exit()
+    try:
+        match Conf['mode']:
+            case 0:
+                s.server()
+            case 1:
+                thr= [Thread(target=s.server), Thread(target=s.pmode3)]
+                for t in thr: t.start()
+                for t in thr: t.join()
+            case 2:
+                thr= [Thread(target=s.pmode2), Thread(target=s.source)]
+                for t in thr: t.start()
+                for t in thr: t.join()
+            case 3:
+                thr= [Thread(target=s.server), Thread(target=s.pmode3), Thread(target=s.source)]
+                for t in thr: t.start()
+                for t in thr: t.join()
+            case _:
+                print('unknown mode in rprod(Conf)')
+                exit()
+    except KeyboardInterrupt:
+        print('Interrupted')
+        rclose()
 
 """ ----TEST----- """
 from rrRcontr import set_mode, CONF

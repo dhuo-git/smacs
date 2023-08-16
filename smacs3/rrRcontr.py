@@ -500,7 +500,7 @@ ports = [5555, 6666]                #c-plane ports
 hub_ip = ipv4                   #u-plane address
 sub_port = 5570                 #u-plane sub-port
 pub_port = 5568                 #u-plane pub-port
-ess = False #True                      #external source and sink, using ports=[ports[0]+2, ports[1]+2], to used by cons.py and prod.py
+ess = True                      #external source and sink, using ports=[ports[0]+2, ports[1]+2], to used by cons.py and prod.py
 
 CONF = {"ips":ips, "ports": ports, "id":0,  "key":[1,2], "dly":1, "ver": 0, 'maxlen':4,  'cnt':10, "mode":0, "uperiod": 0}
 P_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[0], ports[0]),'psrc_port': ports[0]+2,'esrc': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
