@@ -1,0 +1,8 @@
+version: '3.0'
+services:
+  smacs3:
+    image: smacs3:latest
+      - '5555:5555'
+      - '5554:5554'
+    volumes:
+      - ./:/usr/

@@ -31,6 +31,8 @@ python3 rrRcontr.py -clt
 python3 Rcons.py 2/3
 python3 Rprod.py 2/3
 
+if external source/sink
+python3 srcsnk.py -svr/clt/svrclt
 
 3) c-plane
 python3 rrRcons.py 1/0
@@ -41,6 +43,9 @@ python3 rrRcontr.py 1/0
 python3 rrRcons.py 3
 python3 rrRprod.py 3
 python3 rrRcontr.py 3
+
+if external source/sink
+python3 srcsnk.py -svr/clt/svrclt
 
 
 5) analytics(view statistics)
