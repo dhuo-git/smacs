@@ -51,11 +51,6 @@ class Prod(RpcClient):
         #self.srcsvr_socket.setsockopt(zmq.LINGER,1)
         self.srcsvr_socket.bind("ipc://tmp/zmqtestp")
 
-        #self.srcclt_socket = self.context.socket(zmq.PAIR)
-        #self.srcclt_socket.setsockopt(zmq.SNDHWM,1)
-        #self.srcclt_socket.setsockopt(zmq.LINGER,1)
-        #self.srcclt_socket.connect("ipc://tmp/zmqtestp") #source temporary file location fixed
-
 
     def close(self):
         self.pst.clear()

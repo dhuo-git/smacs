@@ -43,11 +43,6 @@ class Cons(RpcServer):
         self.c2p = deque(maxlen=self.conf['maxlen'])
         self.ctr = deque(maxlen=self.conf['maxlen'])
 
-        #self.snksvr_socket = self.context.socket(zmq.PAIR)
-        #self.snksvr_socket.setsockopt(zmq.RCVHWM,1)
-        #self.snksvr_socket.setsockopt(zmq.LINGER,1)
-        #self.snksvr_socket.bind("ipc://tmp/zmqtestc")
-
         #deliverer:
         self.snkclt_socket = self.context.socket(zmq.PAIR)
         #self.snkclt_socket.setsockopt(zmq.SNDHWM,1)

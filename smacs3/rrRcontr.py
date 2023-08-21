@@ -27,8 +27,6 @@ from collections import deque
 from threading import Thread
 from pymongo import MongoClient
 #import pdb
-client=MongoClient('localhost', 27017)
-dbase = client['smacs'] 
 #==========================================================================
 
 class Master:
@@ -140,6 +138,9 @@ class MasterContr(Master):
         super().__init__(conf['ips'], conf['ports'], conf['id'], conf['maxlen'])
         self.conf = copy.deepcopy(conf)
         #DB:
+        #client=MongoClient('localhost', 27017)
+        client=MongoClient(conf['ipdb'], 27017)
+        dbase = client['smacs'] 
         self.co_state = dbase['state']
         self.co_conf =  dbase['conf']
         #prepare for state storage in DB
@@ -470,41 +471,46 @@ def test_db():
             doc2= col.find_one(tag)
             print('updated:',doc2)
 #------------------------------ TEST -------------------------------------------
-""" CONF:
+""" 
+CONF:
 #ips=(p_ip, c_ip): ip addresses for N5 and N7
 #ports=(p_port, c_port): ports for N5 and N7
-#hub_ip: subpub hub address for u-plane
+#hub_ip: IP address for RabbitMQ server host, provind N4 and N6
 #key: (pid, cid) should be idential to that in producer.py and consumer.py, i.e. P_CONF and C_CONF
 #ver: configuration version, to be modified by GUT on DB to trigger update in mode 0
-#cnt: count number on N0 for retransmit measurement request
+#cnt: count number on N0 for measurement requests in a batch, i.e. one run of controller
 #mode: operation mode 0,1,2,3
 #uperiod: periods length (seconds) for u-plane flip-flop (experiment), 0 disables this feature
 P/C-CONF:
-#sub=(sub_port, sub_topic):  u-plane subscription port and topic
-#pub=(pub_port, pub_topic):  u-plane publication port and topic
-#ctraddr = (ips, ports) = ([ip1,ip2], [port1,port2]): ip address and port for sockets for N5 and N7
+#ctraddr = (ips[0]/ips[1], ports[0]/ports[1]) 
+#rtkey: routing key for RabbitMQ client
+#esrc: bool for external source indicatior. Uses internal source if False
+#esink: bool for external sink indicatior. Uses internal sink if False
 """
-#ipv4= "192.168.1.204"               #system76 
-ipv4= "192.168.1.99"               #lenovo P21 #ipv4= "192.168.1.37"
+#ipv4= "192.168.1.99"               #lenovo P21 #ipv4= "192.168.1.37"
 #ipv4= "192.168.1.204"   #system76
 #ipv4="192.168.1.37"    #lenovo T450
 #ipv4="127.0.0.1"    #local
 #ipv4 = "0.0.0.0"
+ipv4 = "172.17.0.2"
+#ipdb = 'localhost'
+ipdb = '172.17.0.3'
 
-#ips = ["127.0.0.1", "127.0.0.1"]    #c-plane addresses
-ips = ["192.168.1.37", "192.168.1.37"]    #c-plane addresses
+ips = ["127.0.0.1", "127.0.0.1"]    #c-plane addresses
+#ips = ["192.168.1.37", "192.168.1.37"]    #c-plane addresses
 #ips = ["192.168.1.37", "192.168.1.99"]    #c-plane addresses
 #ips = ["192.168.1.99", "192.168.1.99"]    #c-plane addresses
-ports = [5555, 6666]                #c-plane ports
+ports = [5555, 5554]                #c-plane ports
 
 hub_ip = ipv4                   #u-plane address
-sub_port = 5570                 #u-plane sub-port
-pub_port = 5568                 #u-plane pub-port
-ess = True                      #external source and sink, using ports=[ports[0]+2, ports[1]+2], to used by cons.py and prod.py
+db_ip = ipdb
+ess = False #True                      #external source and sink, connected to Rprod.py/Rcons.py via tmp/zmqtestp and tmp/zmqtestc
 
-CONF = {"ips":ips, "ports": ports, "id":0,  "key":[1,2], "dly":1, "ver": 0, 'maxlen':4,  'cnt':10, "mode":0, "uperiod": 0}
-P_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[0], ports[0]),'psrc_port': ports[0]+2,'esrc': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
-C_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[1], ports[1]),'csrc_port': ports[1]+2,'esnk': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
+CONF = {"ips":ips, "ports": ports, "ipdb": db_ip, "id":0,  "key":[1,2], "dly":1, "ver": 0, 'maxlen':4,  'cnt':10, "mode":0, "uperiod": 0}
+#P_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[0], ports[0]),'psrc_port': ports[0]+2,'esrc': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
+#C_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[1], ports[1]),'csrc_port': ports[1]+2,'esnk': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
+P_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[0], ports[0]),'esrc': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
+C_CONF = {'hub_ip':hub_ip, 'rtkey': 'rpc_queue', 'key':[1, 2], 'ctraddr':(ips[1], ports[1]),'esnk': ess,  'dly':CONF['dly'], 'maxlen': 4, 'mode': 0}
 CONF['conf'] = {'p': P_CONF, 'c':C_CONF}
 
 if __name__ == "__main__":
