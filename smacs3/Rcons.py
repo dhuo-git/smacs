@@ -171,6 +171,6 @@ if __name__ == "__main__":
         inst.c_server()
         inst.close()
     else: 
-        print('usage: python3 cons.py mode (2 and 3 only)')
-        print('usage: python3 cons.py -local mode (use local c.conf)')
+        print('usage: python3 Rcons.py mode (2 and 3 only)')
+        print('usage: python3 Rcons.py -local mode (use local c.conf)')
         exit()

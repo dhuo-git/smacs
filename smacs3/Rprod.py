@@ -180,7 +180,7 @@ if __name__ == "__main__":
         inst.p_client()
         inst.close()
     else:              
-        print('usage: python3 prod.py mode (2 or 3 only)')
-        print('usage: python3 prod.py -local mode (use local p.conf)')
+        print('usage: python3 Rprod.py mode (2 or 3 only)')
+        print('usage: python3 Rprod.py -local mode (use local p.conf)')
         exit()
 

@@ -205,6 +205,6 @@ if __name__ == '__main__':
         set_mode(CONF, m)
         rcons(CONF)
     else:
-        print('usage: python3 Rcons.py -svr')
-        print('usage: python3 Rcons.py mode (0,1,2,3)')
+        print('usage: python3 rrRcons.py -svr')
+        print('usage: python3 rrRcons.py mode (0,1,2,3)')
 

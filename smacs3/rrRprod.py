@@ -209,5 +209,5 @@ if __name__ == '__main__':
         set_mode(CONF, m)
         rprod(CONF)
     else:
-        print('usage: python3 Rprod.py -svr')
-        print('usage: python3 Rprod.py mode (0,1,2,3)')
+        print('usage: python3 rrRprod.py -svr')
+        print('usage: python3 rrRprod.py mode (0,1,2,3)')
