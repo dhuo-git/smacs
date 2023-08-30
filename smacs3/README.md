@@ -63,3 +63,21 @@ python3 analysis.py -exp2
 https://gist.github.com/140am/ca661b9a4fca550f9554
 
 
+------Docker usage-----
+docker run -d --rm --name rabbit dhuo/rabbitmq
+docker run -d --rm --name mongo dhuo/mongo
+docker run -it --rm --name mnode dhuo/smacs3
+docker exec -it mnode bash
+docker exec -it mnode bash
+
+(in last 3 terminas do 
+python3 rrRcons.py mode (0,1,2,3)
+python3 rrRprod.py mode
+python3 rrRcontr.py mode)
+
+docker run --rm -it --user=$(id -u --env="DISPLAY" --volume="/etc/group:/etc/group:ro" --volume="/etc/passwd:/etc/passwd:ro" --volume="/etc/shadow:/etc/shadow:ro" --volume="/etc/sudoers.d:/etc/sudoers.d:ro" --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" dhuo/analytics python3 analysis.py -exp1
+
+or in local
+python3 analysis.py -exp1/2 (from mode 1/3)
+
+

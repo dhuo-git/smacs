@@ -415,6 +415,8 @@ def add_data(col, tag, entry):
     
 #save given conf in DB as version v, default v=0
 def update_conf_db(conf, v=0):
+    client=MongoClient(conf['ipdb'], 27017)
+    dbase = client['smacs'] 
     col= dbase['conf']
     #v = max(v, conf['ver'])
     doc =  col.find_one({'ver':v}) 
@@ -445,7 +447,9 @@ def set_mode(conf, m):
     conf['conf']['p']['mode'] = m
     conf['conf']['c']['mode'] = m
     print('CONF mode set to ', m)
-def test_db():
+def test_db(conf):
+    client=MongoClient(conf['ipdb'], 27017)
+    dbase = client['smacs'] 
     col =  dbase['test']
     tag = get_tag(col, "Experiment 11")
     rec=col.find_one(tag)
@@ -517,7 +521,7 @@ if __name__ == "__main__":
     print(sys.argv)
     #test DB
     if '-testdb' in sys.argv:
-        test_db()
+        test_db(CONF)
         exit()    
     #prepare configuration entry in DB
     if '-prepdb' in sys.argv:

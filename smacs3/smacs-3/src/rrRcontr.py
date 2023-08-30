@@ -415,6 +415,8 @@ def add_data(col, tag, entry):
     
 #save given conf in DB as version v, default v=0
 def update_conf_db(conf, v=0):
+    client=MongoClient(conf['ipdb'], 27017)
+    dbase = client['smacs'] 
     col= dbase['conf']
     #v = max(v, conf['ver'])
     doc =  col.find_one({'ver':v}) 
@@ -445,7 +447,9 @@ def set_mode(conf, m):
     conf['conf']['p']['mode'] = m
     conf['conf']['c']['mode'] = m
     print('CONF mode set to ', m)
-def test_db():
+def test_db(conf):
+    client=MongoClient(conf['ipdb'], 27017)
+    dbase = client['smacs'] 
     col =  dbase['test']
     tag = get_tag(col, "Experiment 11")
     rec=col.find_one(tag)
@@ -487,18 +491,23 @@ P/C-CONF:
 #esrc: bool for external source indicatior. Uses internal source if False
 #esink: bool for external sink indicatior. Uses internal sink if False
 """
+#ipv4= "192.168.1.99"               #lenovo P21 #ipv4= "192.168.1.37"
+#ipv4= "192.168.1.204"   #system76
+#ipv4="192.168.1.37"    #lenovo T450
 #ipv4="127.0.0.1"    #local
+#ipv4 = "0.0.0.0"
+ipv4 = "172.17.0.2"
 #ipdb = 'localhost'
-ipv4 = "172.17.0.2"     #start rabbitmq server first
-ipdb = '172.17.0.3'     #start mongodb server second
+ipdb = '172.17.0.3'
 
-#ips = ["0.0.0.0", "0.0.0.0"]    #c-plane addresses
 ips = ["127.0.0.1", "127.0.0.1"]    #c-plane addresses
+#ips = ["192.168.1.37", "192.168.1.37"]    #c-plane addresses
+#ips = ["192.168.1.37", "192.168.1.99"]    #c-plane addresses
+#ips = ["192.168.1.99", "192.168.1.99"]    #c-plane addresses
 ports = [5555, 5554]                #c-plane ports
 
 hub_ip = ipv4                   #u-plane address
-db_ip = ipdb                    #address for MongoDB server
-
+db_ip = ipdb
 ess = False #True                      #external source and sink, connected to Rprod.py/Rcons.py via tmp/zmqtestp and tmp/zmqtestc
 
 CONF = {"ips":ips, "ports": ports, "ipdb": db_ip, "id":0,  "key":[1,2], "dly":1, "ver": 0, 'maxlen':4,  'cnt':10, "mode":0, "uperiod": 0}
@@ -512,7 +521,7 @@ if __name__ == "__main__":
     print(sys.argv)
     #test DB
     if '-testdb' in sys.argv:
-        test_db()
+        test_db(CONF)
         exit()    
     #prepare configuration entry in DB
     if '-prepdb' in sys.argv:
